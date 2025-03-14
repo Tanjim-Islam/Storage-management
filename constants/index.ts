@@ -3,26 +3,31 @@ export const navItems = [
     name: "Dashboard",
     icon: "/assets/icons/dashboard.svg",
     url: "/",
+    prefetch: true,
   },
   {
     name: "Documents",
     icon: "/assets/icons/documents.svg",
     url: "/documents",
+    prefetch: true,
   },
   {
     name: "Images",
     icon: "/assets/icons/images.svg",
     url: "/images",
+    prefetch: true,
   },
   {
     name: "Media",
     icon: "/assets/icons/video.svg",
     url: "/media",
+    prefetch: true,
   },
   {
     name: "Others",
     icon: "/assets/icons/others.svg",
     url: "/others",
+    prefetch: true,
   },
 ];
 

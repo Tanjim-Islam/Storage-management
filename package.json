@@ -32,11 +32,16 @@
     "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4",
     "use-debounce": "^10.0.4",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "lru-cache": "^10.2.0"
   },
   "overrides": {
     "react": "$react",
-    "react-dom": "$react-dom"
+    "react-dom": "$react-dom",
+    "glob": "^10.3.10",
+    "rimraf": "^5.0.5",
+    "@humanwhocodes/config-array": "@eslint/config-array",
+    "@humanwhocodes/object-schema": "@eslint/object-schema"
   },
   "devDependencies": {
     "@types/node": "^20",
