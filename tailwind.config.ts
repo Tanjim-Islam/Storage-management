@@ -11,10 +11,10 @@ const config: Config = {
   	extend: {
   		colors: {
   			brand: {
-  				'100': '#EA6365',
-  				DEFAULT: '#FA7275'
+  				'100': '#7AB2FF',
+  				DEFAULT: '#4D9CFF'
   			},
-  			red: '#FF7474',
+  			red: '#4D9CFF',
   			error: '#b80000',
   			green: '#3DD9B3',
   			blue: '#56B8FF',
@@ -92,10 +92,16 @@ const config: Config = {
   				'20%,50%': {
   					opacity: '0'
   				}
+  			},
+  			'nav-hover': {
+  				'0%': { transform: 'translateX(0)' },
+  				'50%': { transform: 'translateX(5px)' },
+  				'100%': { transform: 'translateX(0)' }
   			}
   		},
   		animation: {
-  			'caret-blink': 'caret-blink 1.25s ease-out infinite'
+  			'caret-blink': 'caret-blink 1.25s ease-out infinite',
+  			'nav-hover': 'nav-hover 0.5s ease-in-out'
   		}
   	}
   },
