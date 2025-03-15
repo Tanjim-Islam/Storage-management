@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from 'next/font/google'
 
 import "./globals.css";
+import { LoadingProvider } from "@/components/LoadingProvider";
 
 const poppins = Poppins({
     subsets: ['latin'],
@@ -24,7 +25,9 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} font-poppins antialiased`}
       >
-        {children}
+        <LoadingProvider>
+          {children}
+        </LoadingProvider>
       </body>
     </html>
   );
