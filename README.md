@@ -20,7 +20,7 @@ StoreIt is a modern, full-stack file storage application built with Next.js and 
 ## Tech Stack
 
 ### Frontend
-- **Next.js 14**: React framework with App Router for server-side rendering and routing
+- **Next.js 15**: React framework with App Router for server-side rendering and routing
 - **TypeScript**: Type-safe code development
 - **Tailwind CSS**: Utility-first CSS framework for styling
 - **Shadcn UI**: Reusable UI components built with Radix UI
