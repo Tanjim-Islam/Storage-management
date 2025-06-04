@@ -2,22 +2,27 @@
 
 import { Models } from "node-appwrite";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface Props {
   file: Models.Document;
   prevId?: string | null;
   nextId?: string | null;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onClose?: () => void;
 }
 
-const FileViewer = ({ file, prevId, nextId }: Props) => {
+const FileViewer = ({ file, prevId, nextId, onPrev, onNext, onClose }: Props) => {
   const router = useRouter();
 
   const handlePrev = () => {
+    if (onPrev) return onPrev();
     if (prevId) router.push(`/file/${prevId}`);
   };
 
   const handleNext = () => {
+    if (onNext) return onNext();
     if (nextId) router.push(`/file/${nextId}`);
   };
 
@@ -42,9 +47,12 @@ const FileViewer = ({ file, prevId, nextId }: Props) => {
     return <iframe src={file.url} className="w-full h-[80vh]" />;
   };
 
+  const showPrev = onPrev || prevId;
+  const showNext = onNext || nextId;
+
   return (
     <div className="relative flex items-center justify-center p-4">
-      {prevId && (
+      {showPrev && (
         <button
           onClick={handlePrev}
           className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white"
@@ -53,12 +61,20 @@ const FileViewer = ({ file, prevId, nextId }: Props) => {
         </button>
       )}
       {renderContent()}
-      {nextId && (
+      {showNext && (
         <button
           onClick={handleNext}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white"
         >
           <ChevronRight className="size-6" />
+        </button>
+      )}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white"
+        >
+          <X className="size-5" />
         </button>
       )}
     </div>
