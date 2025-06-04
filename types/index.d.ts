@@ -48,6 +48,12 @@ declare interface FileUploaderProps {
   className?: string;
 }
 
+declare interface PageDropzoneProps {
+  ownerId: string;
+  accountId: string;
+  children: React.ReactNode;
+}
+
 declare interface MobileNavigationProps {
   ownerId: string;
   accountId: string;
