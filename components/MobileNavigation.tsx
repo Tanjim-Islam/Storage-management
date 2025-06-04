@@ -81,9 +81,14 @@ const MobileNavigation = ({
           <div className="flex flex-col justify-between gap-5 pb-5">
             <FileUploader ownerId={ownerId} accountId={accountId} />
             <Button
-              type="submit"
+              type="button"
               className="mobile-sign-out-button"
-              onClick={async () => await signOutUser()}
+              onClick={async () => {
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("loggedIn");
+                }
+                await signOutUser();
+              }}
             >
               <OptimizedIcon
                 src="/assets/icons/logout.svg"

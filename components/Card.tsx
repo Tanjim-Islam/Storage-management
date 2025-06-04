@@ -7,7 +7,7 @@ import ActionDropdown from "@/components/ActionDropdown";
 
 const Card = ({ file }: { file: Models.Document }) => {
   return (
-    <Link href={file.url} target="_blank" className="file-card">
+    <Link href={`/file/${file.$id}`} className="file-card">
       <div className="flex justify-between">
         <Thumbnail
           type={file.type}

@@ -193,6 +193,22 @@ export const deleteFile = async ({
   }
 };
 
+export const getFileById = async ({ fileId }: { fileId: string }) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const file = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+    );
+
+    return parseStringify(file);
+  } catch (error) {
+    handleError(error, "Failed to get file by id");
+  }
+};
+
 // ============================== TOTAL FILE SPACE USED
 export async function getTotalSpaceUsed() {
   try {
