@@ -354,6 +354,14 @@
     @apply subtitle-2 mb-2 line-clamp-1 max-w-[300px] !important;
   }
 
+  /* Page Dropzone */
+  .dropzone-wrapper {
+    @apply relative min-h-screen;
+  }
+  .dropzone-overlay {
+    @apply fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-brand bg-black/60 !important;
+  }
+
   .error-toast {
     @apply bg-red !rounded-[10px] !important;
   }
