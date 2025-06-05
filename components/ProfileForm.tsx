@@ -8,23 +8,17 @@ import { Label } from "@/components/ui/label";
 import { updateUserProfile } from "@/lib/actions/user.actions";
 import { useToast } from "@/hooks/use-toast";
 import OptimizedIcon from "@/components/OptimizedIcon";
+import { useUser } from "@/contexts/UserContext";
 
-interface ProfileFormProps {
-  user: {
-    $id: string;
-    fullName: string;
-    email: string;
-    avatar: string;
-    accountId: string;
-  };
-}
-
-const ProfileForm = ({ user }: ProfileFormProps) => {
-  const [fullName, setFullName] = useState(user.fullName);
-  const [avatar, setAvatar] = useState(user.avatar);
+const ProfileForm = () => {
+  const { user, updateUser } = useUser();
+  const [fullName, setFullName] = useState(user?.fullName || "");
+  const [avatar, setAvatar] = useState(user?.avatar || "");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
+
+  if (!user) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -41,11 +35,19 @@ const ProfileForm = ({ user }: ProfileFormProps) => {
     setIsLoading(true);
 
     try {
-      await updateUserProfile({
+      const updatedUser = await updateUserProfile({
         userId: user.$id,
         fullName,
         avatar: selectedFile || avatar,
       });
+
+      // Update the user context with new data
+      if (updatedUser) {
+        updateUser({
+          fullName: updatedUser.fullName,
+          avatar: updatedUser.avatar,
+        });
+      }
 
       toast({
         title: "Success",
@@ -93,6 +95,9 @@ const ProfileForm = ({ user }: ProfileFormProps) => {
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
+                title="Upload profile photo"
+                placeholder="Upload profile photo"
+                aria-label="Upload profile photo"
               />
             </label>
           </div>
@@ -146,7 +151,7 @@ const ProfileForm = ({ user }: ProfileFormProps) => {
           <Button
             type="submit"
             disabled={isLoading}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2"
+            className="bg-brand hover:bg-blue rounded-full px-6 py-5"
           >
             {isLoading ? "Saving..." : "Save Changes"}
           </Button>

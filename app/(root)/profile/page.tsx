@@ -13,7 +13,7 @@ const ProfilePage = async () => {
         <h1 className="h1">Profile Settings</h1>
 
         <div className="mt-8">
-          <ProfileForm user={currentUser} />
+          <ProfileForm />
         </div>
       </section>
     </div>
