@@ -1,3 +1,5 @@
+"use client";
+
 import { Models } from "node-appwrite";
 import Thumbnail from "@/components/Thumbnail";
 import { convertFileSize } from "@/lib/utils";
@@ -5,7 +7,6 @@ import FormattedDateTime from "@/components/FormattedDateTime";
 import ActionDropdown from "@/components/ActionDropdown";
 import { useFileViewer } from "@/components/FileViewerProvider";
 
-"use client";
 interface Props {
   file: Models.Document;
   index: number;
