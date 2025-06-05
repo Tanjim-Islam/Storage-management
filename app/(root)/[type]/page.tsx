@@ -3,6 +3,7 @@ import Sort from "@/components/Sort";
 import { getFiles } from "@/lib/actions/file.actions";
 import { Models } from "node-appwrite";
 import Card from "@/components/Card";
+import { FileViewerProvider } from "@/components/FileViewerProvider";
 import { getFileTypesParams } from "@/lib/utils";
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
@@ -15,6 +16,7 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
   const files = await getFiles({ types, searchText, sort });
 
   return (
+    <FileViewerProvider files={files.documents}>
     <div className="page-container">
       <section className="w-full">
         <h1 className="h1 capitalize">{type}</h1>
@@ -35,14 +37,15 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
       {/* Render the files */}
       {files.total > 0 ? (
         <section className="file-list">
-          {files.documents.map((file: Models.Document) => (
-            <Card key={file.$id} file={file} />
+          {files.documents.map((file: Models.Document, i) => (
+            <Card key={file.$id} file={file} index={i} />
           ))}
         </section>
       ) : (
         <p className="empty-list">No files uploaded</p>
       )}
     </div>
+    </FileViewerProvider>
   );
 };
 

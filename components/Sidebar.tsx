@@ -4,14 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { memo } from "react";
 import OptimizedNavigation from "./OptimizedNavigation";
+import { useUser } from "@/contexts/UserContext";
 
-interface Props {
-  fullName: string;
-  avatar: string;
-  email: string;
-}
+const Sidebar = () => {
+  const { user } = useUser();
 
-const Sidebar = ({ fullName, avatar, email }: Props) => {
+  if (!user) return null;
+
+  const { fullName, avatar, email } = user;
   return (
     <aside className="sidebar">
       <Link href="/">

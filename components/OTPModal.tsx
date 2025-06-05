@@ -44,7 +44,12 @@ const OtpModal = ({
 
       console.log({ sessionId });
 
-      if (sessionId) router.push("/");
+      if (sessionId) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("loggedIn", "true");
+        }
+        router.push("/");
+      }
     } catch (error) {
       console.log("Failed to verify OTP", error);
     }

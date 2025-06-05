@@ -71,7 +71,7 @@ const MobileNavigation = ({
             <Separator className="mb-4 bg-light-200/20" />
           </SheetTitle>
 
-          <OptimizedNavigation 
+          <OptimizedNavigation
             className="mobile-nav"
             onItemClick={() => setOpen(false)}
           />
@@ -79,11 +79,20 @@ const MobileNavigation = ({
           <Separator className="my-5 bg-light-200/20" />
 
           <div className="flex flex-col justify-between gap-5 pb-5">
-            <FileUploader ownerId={ownerId} accountId={accountId} />
+            <FileUploader
+              ownerId={ownerId}
+              accountId={accountId}
+              className="w-full"
+            />
             <Button
-              type="submit"
+              type="button"
               className="mobile-sign-out-button"
-              onClick={async () => await signOutUser()}
+              onClick={async () => {
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("loggedIn");
+                }
+                await signOutUser();
+              }}
             >
               <OptimizedIcon
                 src="/assets/icons/logout.svg"

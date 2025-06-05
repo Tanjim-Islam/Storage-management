@@ -198,6 +198,14 @@
     @apply invert-0 opacity-100 !important;
   }
 
+  /* Profile icon specific styling */
+  .profile-icon {
+    @apply w-8 h-8 text-gray-400 -ml-1 !important;
+  }
+  .profile-icon-active {
+    @apply w-8 h-8 text-white -ml-1 !important;
+  }
+
   /* =====  STYLE CLASSES */
 
   /* Root Layout */
@@ -431,9 +439,15 @@
   }
 
   @keyframes sidebarItemHover {
-    0% { transform: translateX(0px); }
-    50% { transform: translateX(5px); }
-    100% { transform: translateX(0px); }
+    0% {
+      transform: translateX(0px);
+    }
+    50% {
+      transform: translateX(5px);
+    }
+    100% {
+      transform: translateX(0px);
+    }
   }
 
   .sidebar-nav-item {
@@ -443,14 +457,14 @@
     animation: sidebarItemHover 0.5s ease-in-out;
     background-color: rgba(77, 156, 255, 0.1);
   }
-  
+
   /* Only change text color on hover */
   .sidebar-nav-item:not(.shad-active):hover p {
-    color: #4D9CFF !important;
+    color: #4d9cff !important;
   }
-  
+
   .sidebar-nav-item:not(.shad-active):hover {
-    color: #4D9CFF !important;
+    color: #4d9cff !important;
   }
   .sidebar-user-info {
     @apply mt-4 flex items-center justify-center gap-2 rounded-full bg-brand/10 p-1 text-light-100 lg:justify-start lg:p-3 !important;
