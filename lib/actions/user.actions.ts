@@ -14,7 +14,7 @@ const getUserByEmail = async (email: string) => {
   const result = await databases.listDocuments(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
-    [Query.equal("email", [email])],
+    [Query.equal("email", [email])]
   );
 
   return result.total > 0 ? result.documents[0] : null;
@@ -61,7 +61,7 @@ export const createAccount = async ({
         email,
         avatar: avatarPlaceholderUrl,
         accountId,
-      },
+      }
     );
   }
 
@@ -107,7 +107,7 @@ export const getCurrentUser = async () => {
     const user = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", result.$id)],
+      [Query.equal("accountId", result.$id)]
     );
 
     if (user.total <= 0) {
@@ -147,5 +147,47 @@ export const signInUser = async ({ email }: { email: string }) => {
     return parseStringify({ accountId: null, error: "User not found" });
   } catch (error) {
     handleError(error, "Failed to sign in user");
+  }
+};
+
+export const updateUserProfile = async ({
+  userId,
+  fullName,
+  avatar,
+}: {
+  userId: string;
+  fullName: string;
+  avatar: string | File;
+}) => {
+  try {
+    const { databases, storage } = await createSessionClient();
+
+    let avatarUrl = avatar;
+
+    // If avatar is a File, upload it to storage
+    if (avatar instanceof File) {
+      const uploadedFile = await storage.createFile(
+        appwriteConfig.bucketId,
+        ID.unique(),
+        avatar
+      );
+
+      avatarUrl = `${appwriteConfig.endpointUrl}/storage/buckets/${appwriteConfig.bucketId}/files/${uploadedFile.$id}/view?project=${appwriteConfig.projectId}`;
+    }
+
+    // Update user document in database
+    const updatedUser = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      userId,
+      {
+        fullName,
+        avatar: avatarUrl,
+      }
+    );
+
+    return parseStringify(updatedUser);
+  } catch (error) {
+    handleError(error, "Failed to update user profile");
   }
 };

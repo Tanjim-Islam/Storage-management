@@ -29,6 +29,12 @@ export const navItems = [
     url: "/others",
     prefetch: true,
   },
+  {
+    name: "Profile",
+    icon: "/assets/icons/user.svg",
+    url: "/profile",
+    prefetch: true,
+  },
 ];
 
 export const actionsDropdownItems = [
