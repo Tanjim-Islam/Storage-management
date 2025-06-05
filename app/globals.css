@@ -198,6 +198,14 @@
     @apply invert-0 opacity-100 !important;
   }
 
+  /* Profile icon specific styling */
+  .profile-icon {
+    @apply w-8 h-8 text-gray-400 -ml-1 !important;
+  }
+  .profile-icon-active {
+    @apply w-8 h-8 text-white -ml-1 !important;
+  }
+
   /* =====  STYLE CLASSES */
 
   /* Root Layout */
