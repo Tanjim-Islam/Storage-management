@@ -36,14 +36,7 @@ const Sidebar = () => {
 
       <OptimizedNavigation />
 
-      <Image
-        src="/assets/images/files-2.png"
-        alt="logo"
-        width={506}
-        height={418}
-        loading="lazy"
-        className="w-full"
-      />
+
 
       <div className="sidebar-user-info">
         <Image

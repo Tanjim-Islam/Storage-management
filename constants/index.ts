@@ -18,7 +18,7 @@ export const navItems = [
     prefetch: true,
   },
   {
-    name: "Media",
+    name: "Videos",
     icon: "/assets/icons/video.svg",
     url: "/media",
     prefetch: true,
