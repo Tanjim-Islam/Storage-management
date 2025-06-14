@@ -4,10 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Models } from "node-appwrite";
 import FolderActionDropdown from "./FolderActionDropdown";
+import { usePathname } from "next/navigation";
 
 const FolderCard = ({ folder }: { folder: Models.Document }) => {
+  const pathname = usePathname();
+  const isOnFoldersPage = pathname === "/folders";
+  
   return (
-    <div className="flex items-center gap-3 pl-4">
+    <div className={`flex items-center gap-3 pl-4 transition-transform duration-200 hover:-translate-y-1 ${isOnFoldersPage ? 'border rounded-2xl shadow-sm hover:shadow-lg p-2 transition-all duration-300' : ''}`}>
       <Link href={`/folders/${folder.$id}`} className="flex flex-1 items-center gap-3 text-left">
         <span className="folder-thumb">
           <Image
