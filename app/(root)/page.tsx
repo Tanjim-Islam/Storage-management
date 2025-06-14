@@ -16,8 +16,8 @@ import { convertFileSize, getUsageSummary } from "@/lib/utils";
 const Dashboard = async () => {
   // Parallel requests
   const [folders, files, totalSpace] = await Promise.all([
-    getFolders(8),
-    getFiles({ types: [], limit: 8 }),
+    getFolders(),
+    getFiles({ types: [] }),
     getTotalSpaceUsed(),
   ]);
 
@@ -70,16 +70,30 @@ const Dashboard = async () => {
         <h2 className="h3 xl:h2 text-light-100">Recent items</h2>
         {folders.total > 0 || files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
-            {folders.documents.map((folder: Models.Document) => (
-              <li key={folder.$id}>
-                <FolderCard folder={folder} />
-              </li>
-            ))}
-            {files.documents.map((file: Models.Document, i: number) => (
-              <li key={file.$id}>
-                <RecentFileRow file={file} index={i} />
-              </li>
-            ))}
+            {[
+              ...folders.documents.map((folder: Models.Document) => ({
+                item: folder,
+                type: 'folder',
+                date: new Date(folder.$createdAt)
+              })),
+              ...files.documents.map((file: Models.Document, i: number) => ({
+                item: file,
+                type: 'file',
+                index: i,
+                date: new Date(file.$createdAt)
+              }))
+            ]
+              .sort((a, b) => b.date.getTime() - a.date.getTime())
+              .slice(0, 8)
+              .map((entry) => (
+                <li key={entry.item.$id}>
+                  {entry.type === 'folder' ? (
+                    <FolderCard folder={entry.item} />
+                  ) : (
+                    <RecentFileRow file={entry.item} index={entry.index!} />
+                  )}
+                </li>
+              ))}
           </ul>
         ) : (
           <p className="empty-list">No items uploaded</p>
