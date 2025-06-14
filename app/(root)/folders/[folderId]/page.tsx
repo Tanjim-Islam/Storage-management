@@ -14,7 +14,7 @@ const Page = async ({ params }: { params: { folderId: string } }) => {
   return (
     <FileViewerProvider files={files.documents}>
       <div className="page-container">
-        <Link href="/" className="back-button mb-4 inline-flex items-center justify-center p-2 rounded-full transition-all hover:shadow-[0_0_10px_rgba(59,130,246,0.6)]">
+        <Link href="/folders" className="back-button mb-4 inline-flex items-center justify-center p-2 rounded-full transition-all hover:shadow-[0_0_10px_rgba(59,130,246,0.6)]">
           <Image src="/assets/icons/back.svg" alt="Back" width={24} height={24} />
         </Link>
         <h1 className="h1 mb-4">{folder.name}</h1>
