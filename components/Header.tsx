@@ -17,8 +17,10 @@ const Header = ({
       <div className="header-wrapper">
         <FileUploader ownerId={userId} accountId={accountId} />
         <label htmlFor="folder-upload" className="uploader-button">
-          <img src="/assets/icons/folder.svg" alt="folder" width={24} height={24} />
-          <span className="sr-only">Upload folder</span>
+          <div className="flex items-center justify-center gap-2">
+            <img src="/assets/icons/folder.svg" alt="folder" width={20} height={20} />
+            <span className="text-sm">Upload Folder</span>
+          </div>
         </label>
         <FolderUploader ownerId={userId} accountId={accountId} />
         <SignOutButton className="sign-out-button" />
