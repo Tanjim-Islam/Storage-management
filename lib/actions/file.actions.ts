@@ -79,7 +79,17 @@ const createQueries = (
   ];
 
   if (types.length > 0) queries.push(Query.equal("type", types));
-  if (folderId) queries.push(Query.equal("folderId", [folderId]));
+  
+  // Handle folder filtering:
+  // - If folderId is provided, get files in that specific folder
+  // - If folderId is undefined, get only root-level files (no folderId)
+  if (folderId) {
+    queries.push(Query.equal("folderId", [folderId]));
+  } else {
+    // Only get files that don't belong to any folder (root-level files)
+    queries.push(Query.isNull("folderId"));
+  }
+  
   if (searchText) queries.push(Query.contains("name", searchText));
   if (limit) queries.push(Query.limit(limit));
 

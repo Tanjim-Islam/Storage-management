@@ -3,10 +3,9 @@
 declare type FileType = "document" | "image" | "video" | "audio" | "other";
 
 declare interface Folder {
-  id: string;
   name: string;
   ownerId: string;
-  createdAt: string;
+  accountId: string;
 }
 
 declare interface ActionType {

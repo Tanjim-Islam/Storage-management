@@ -5,19 +5,25 @@ import { appwriteConfig } from "@/lib/appwrite/config";
 import { ID, Models, Query } from "node-appwrite";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { parseStringify } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
 
-export const createFolder = async (folder: Folder): Promise<string> => {
+export const createFolder = async (
+  folder: Folder,
+  path?: string
+): Promise<string> => {
   const { databases } = await createAdminClient();
   try {
     const doc = await databases.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.foldersCollectionId,
-      folder.id,
-      folder
+      ID.unique(), // Generate a unique ID for the document
+      folder // Pass folder data directly
     );
+
+    if (path) revalidatePath(path);
     return doc.$id;
   } catch (error) {
-    console.error(error);
+    console.error("createFolder: Error creating folder:", error);
     throw new Error("Failed to create folder");
   }
 };

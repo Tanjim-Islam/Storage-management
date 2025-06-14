@@ -15,11 +15,18 @@ interface Props {
 const Card = ({ file, index }: Props) => {
   const { open } = useFileViewer();
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't open file viewer if clicking on the action dropdown
+    if ((e.target as HTMLElement).closest("[data-action-dropdown]")) {
+      return;
+    }
+    open(index);
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => open(index)}
-      className="file-card text-left"
+    <div
+      onClick={handleCardClick}
+      className="file-card text-left cursor-pointer"
     >
       <div className="flex justify-between">
         <Thumbnail
@@ -31,7 +38,9 @@ const Card = ({ file, index }: Props) => {
         />
 
         <div className="flex flex-col items-end justify-between">
-          <ActionDropdown file={file} />
+          <div data-action-dropdown>
+            <ActionDropdown file={file} />
+          </div>
           <p className="body-1">{convertFileSize(file.size)}</p>
         </div>
       </div>
@@ -46,7 +55,8 @@ const Card = ({ file, index }: Props) => {
           By: {file.owner.fullName}
         </p>
       </div>
-    </button>
+    </div>
   );
 };
+
 export default Card;
