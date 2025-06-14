@@ -12,6 +12,11 @@ interface Props {
   accountId: string;
 }
 
+interface DirectoryInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  webkitdirectory?: string;
+  directory?: string;
+}
+
 const FolderUploader = ({ ownerId, accountId }: Props) => {
   const { toast } = useToast();
   const path = usePathname();
@@ -61,12 +66,15 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
   return (
     <input
       type="file"
-      webkitdirectory="true"
-      directory="true"
+      {...({
+        webkitdirectory: "true",
+        directory: "true",
+      } as DirectoryInputProps)}
       multiple
       className="hidden"
       onChange={handleChange}
       id="folder-upload"
+      aria-label="Upload folder"
     />
   );
 };

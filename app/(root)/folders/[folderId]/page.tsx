@@ -5,8 +5,9 @@ import Card from "@/components/Card";
 import { Models } from "node-appwrite";
 
 const Page = async ({ params }: { params: { folderId: string } }) => {
-  const folder = await getFolderById(params.folderId);
-  const files = await getFiles({ types: [], folderId: params.folderId });
+  const { folderId } = await params;
+  const folder = await getFolderById(folderId);
+  const files = await getFiles({ types: [], folderId });
 
   return (
     <div className="page-container">
