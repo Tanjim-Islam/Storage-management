@@ -6,6 +6,7 @@ import { ID, Models, Query } from "node-appwrite";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { getFiles, deleteFile } from "./file.actions";
 
 export const createFolder = async (
   folder: Folder,
@@ -60,5 +61,102 @@ export const getFolderById = async (folderId: string) => {
   } catch (error) {
     console.error(error);
     throw new Error("Failed to get folder");
+  }
+};
+
+export const renameFolder = async ({
+  folderId,
+  name,
+  path,
+}: {
+  folderId: string;
+  name: string;
+  path: string;
+}) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const updatedFolder = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.foldersCollectionId,
+      folderId,
+      {
+        name,
+      }
+    );
+
+    revalidatePath(path);
+    return true;
+  } catch (error) {
+    console.error("Failed to rename folder:", error);
+    return false;
+  }
+};
+
+export const updateFolderUsers = async ({
+  folderId,
+  emails,
+  path,
+}: {
+  folderId: string;
+  emails: string[];
+  path: string;
+}) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const updatedFolder = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.foldersCollectionId,
+      folderId,
+      {
+        users: emails,
+      }
+    );
+
+    revalidatePath(path);
+    return true;
+  } catch (error) {
+    console.error("Failed to update folder users:", error);
+    return false;
+  }
+};
+
+export const deleteFolder = async ({
+  folderId,
+  path,
+}: {
+  folderId: string;
+  path: string;
+}) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    // 1. Get all files in this folder
+    const filesInFolder = await getFiles({ folderId, types: [] });
+    
+    // 2. Delete all files in this folder
+    if (filesInFolder && filesInFolder.documents) {
+      for (const file of filesInFolder.documents) {
+        await deleteFile({
+          fileId: file.$id,
+          bucketField: file.bucketField,
+          path,
+        });
+      }
+    }
+
+    // 3. Delete the folder itself
+    await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.foldersCollectionId,
+      folderId
+    );
+
+    revalidatePath(path);
+    return true;
+  } catch (error) {
+    console.error("Failed to delete folder:", error);
+    return false;
   }
 };
