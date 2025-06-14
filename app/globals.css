@@ -129,6 +129,21 @@
     @apply text-[10px] leading-[14px] font-normal;
   }
 
+  /* ============================= LAYOUT CLASSES ============================= */
+  .page-container {
+    @apply flex flex-col flex-1 gap-6 p-4 md:p-6 lg:p-8;
+    position: relative;
+  }
+
+  .back-button {
+    @apply absolute left-4 md:left-6 lg:left-8 top-4 md:top-6 lg:top-8;
+    transition: transform 0.2s ease;
+  }
+
+  .back-button:hover {
+    transform: scale(1.1);
+  }
+
   /* ===== HELPER CLASSES */
   .container {
     @apply mx-auto max-w-7xl px-5;
@@ -356,7 +371,7 @@
 
   /* FileUploader */
   .uploader-button {
-    @apply primary-btn h-[52px] gap-2 px-10 shadow-drop-1 !important;
+    @apply flex items-center justify-center gap-2 h-[52px] px-6 bg-brand rounded-full text-white font-medium cursor-pointer shadow-drop-1 !important;
   }
   .uploader-preview-list {
     @apply fixed bottom-10 right-10 z-50 flex size-full h-fit max-w-[480px] flex-col gap-3 rounded-[20px] bg-white p-7 shadow-drop-3 !important;
@@ -497,6 +512,10 @@
   }
   .thumbnail-image {
     @apply size-full object-cover object-center !important;
+  }
+
+  .folder-thumb {
+    @apply flex-center size-[50px] min-w-[50px] overflow-hidden rounded-full bg-cyan-500/20;
   }
 }
 

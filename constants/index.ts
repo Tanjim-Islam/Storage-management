@@ -24,6 +24,13 @@ export const navItems = [
     prefetch: true,
   },
   {
+    name: "Folders",
+    icon: "/assets/icons/folder-sidebar.svg",
+    activeIcon: "/assets/icons/folder-sidebar-active.svg",
+    url: "/folders",
+    prefetch: true,
+  },
+  {
     name: "Others",
     icon: "/assets/icons/others.svg",
     url: "/others",

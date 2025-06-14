@@ -2,6 +2,12 @@
 
 declare type FileType = "document" | "image" | "video" | "audio" | "other";
 
+declare interface Folder {
+  name: string;
+  ownerId: string;
+  accountId: string;
+}
+
 declare interface ActionType {
   label: string;
   icon: string;
@@ -17,6 +23,7 @@ declare interface UploadFileProps {
   file: File;
   ownerId: string;
   accountId: string;
+  folderId?: string;
   path: string;
 }
 declare interface GetFilesProps {
@@ -24,6 +31,7 @@ declare interface GetFilesProps {
   searchText?: string;
   sort?: string;
   limit?: number;
+  folderId?: string;
 }
 declare interface RenameFileProps {
   fileId: string;

@@ -9,12 +9,15 @@ import { FormattedDateTime } from "@/components/FormattedDateTime";
 import { Thumbnail } from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
+import { getFolders } from "@/lib/actions/folder.actions";
+import FolderCard from "@/components/FolderCard";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 
 const Dashboard = async () => {
   // Parallel requests
-  const [files, totalSpace] = await Promise.all([
-    getFiles({ types: [], limit: 10 }),
+  const [folders, files, totalSpace] = await Promise.all([
+    getFolders(),
+    getFiles({ types: [] }),
     getTotalSpaceUsed(),
   ]);
 
@@ -62,19 +65,38 @@ const Dashboard = async () => {
         </ul>
       </section>
 
-      {/* Recent files uploaded */}
+      {/* Recent items uploaded */}
       <section className="dashboard-recent-files">
-        <h2 className="h3 xl:h2 text-light-100">Recent files uploaded</h2>
-        {files.documents.length > 0 ? (
+        <h2 className="h3 xl:h2 text-light-100">Recent items</h2>
+        {folders.total > 0 || files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
-            {files.documents.map((file: Models.Document, i: number) => (
-              <li key={file.$id}>
-                <RecentFileRow file={file} index={i} />
-              </li>
-            ))}
+            {[
+              ...folders.documents.map((folder: Models.Document) => ({
+                item: folder,
+                type: 'folder',
+                date: new Date(folder.$createdAt)
+              })),
+              ...files.documents.map((file: Models.Document, i: number) => ({
+                item: file,
+                type: 'file',
+                index: i,
+                date: new Date(file.$createdAt)
+              }))
+            ]
+              .sort((a, b) => b.date.getTime() - a.date.getTime())
+              .slice(0, 8)
+              .map((entry) => (
+                <li key={entry.item.$id}>
+                  {entry.type === 'folder' ? (
+                    <FolderCard folder={entry.item} />
+                  ) : (
+                    <RecentFileRow file={entry.item} index={entry.index!} />
+                  )}
+                </li>
+              ))}
           </ul>
         ) : (
-          <p className="empty-list">No files uploaded</p>
+          <p className="empty-list">No items uploaded</p>
         )}
       </section>
     </div>

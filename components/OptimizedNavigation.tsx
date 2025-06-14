@@ -9,13 +9,14 @@ interface NavItemProps {
   url: string;
   name: string;
   icon: string;
+  activeIcon?: string;
   isActive: boolean;
   onClick: () => void;
 }
 
 // Highly optimized navigation item component
 const NavItem = React.memo(
-  ({ url, name, icon, isActive, onClick }: NavItemProps) => {
+  ({ url, name, icon, activeIcon, isActive, onClick }: NavItemProps) => {
     return (
       <Link href={url} prefetch={true} onClick={onClick} className="lg:w-full">
         <li className={cn("sidebar-nav-item", isActive && "shad-active")}>
@@ -39,7 +40,7 @@ const NavItem = React.memo(
             </svg>
           ) : (
             <OptimizedIcon
-              src={icon}
+              src={isActive && activeIcon ? activeIcon : icon}
               alt={name}
               width={24}
               height={24}
@@ -98,16 +99,21 @@ const OptimizedNavigation: React.FC<OptimizedNavigationProps> = ({
 
   // Memoize navigation items to prevent re-renders
   const navigationItems = useMemo(() => {
-    return navItems.map(({ url, name, icon }) => (
-      <NavItem
-        key={name}
-        url={url}
-        name={name}
-        icon={icon}
-        isActive={pathname === url}
-        onClick={handleNavClick(url)}
-      />
-    ));
+    return navItems.map(({ url, name, icon, activeIcon }) => {
+      const active =
+        pathname === url || (url === "/folders" && pathname.startsWith("/folders"));
+      return (
+        <NavItem
+          key={name}
+          url={url}
+          name={name}
+          icon={icon}
+          activeIcon={activeIcon}
+          isActive={active}
+          onClick={handleNavClick(url)}
+        />
+      );
+    });
   }, [pathname, handleNavClick]);
 
   return (
