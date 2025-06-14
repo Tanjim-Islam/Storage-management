@@ -9,12 +9,15 @@ import { FormattedDateTime } from "@/components/FormattedDateTime";
 import { Thumbnail } from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
+import { getFolders } from "@/lib/actions/folder.actions";
+import FolderCard from "@/components/FolderCard";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 
 const Dashboard = async () => {
   // Parallel requests
-  const [files, totalSpace] = await Promise.all([
-    getFiles({ types: [], limit: 10 }),
+  const [folders, files, totalSpace] = await Promise.all([
+    getFolders(8),
+    getFiles({ types: [], limit: 8 }),
     getTotalSpaceUsed(),
   ]);
 
@@ -62,11 +65,16 @@ const Dashboard = async () => {
         </ul>
       </section>
 
-      {/* Recent files uploaded */}
+      {/* Recent items uploaded */}
       <section className="dashboard-recent-files">
-        <h2 className="h3 xl:h2 text-light-100">Recent files uploaded</h2>
-        {files.documents.length > 0 ? (
+        <h2 className="h3 xl:h2 text-light-100">Recent items</h2>
+        {folders.total > 0 || files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
+            {folders.documents.map((folder: Models.Document) => (
+              <li key={folder.$id}>
+                <FolderCard folder={folder} />
+              </li>
+            ))}
             {files.documents.map((file: Models.Document, i: number) => (
               <li key={file.$id}>
                 <RecentFileRow file={file} index={i} />
@@ -74,7 +82,7 @@ const Dashboard = async () => {
             ))}
           </ul>
         ) : (
-          <p className="empty-list">No files uploaded</p>
+          <p className="empty-list">No items uploaded</p>
         )}
       </section>
     </div>

@@ -498,6 +498,10 @@
   .thumbnail-image {
     @apply size-full object-cover object-center !important;
   }
+
+  .folder-thumb {
+    @apply flex-center size-[50px] min-w-[50px] overflow-hidden rounded-full bg-cyan-500/20;
+  }
 }
 
 @layer base {

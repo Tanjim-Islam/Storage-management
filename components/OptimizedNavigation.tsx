@@ -98,16 +98,20 @@ const OptimizedNavigation: React.FC<OptimizedNavigationProps> = ({
 
   // Memoize navigation items to prevent re-renders
   const navigationItems = useMemo(() => {
-    return navItems.map(({ url, name, icon }) => (
-      <NavItem
-        key={name}
-        url={url}
-        name={name}
-        icon={icon}
-        isActive={pathname === url}
-        onClick={handleNavClick(url)}
-      />
-    ));
+    return navItems.map(({ url, name, icon }) => {
+      const active =
+        pathname === url || (url === "/folders" && pathname.startsWith("/folders"));
+      return (
+        <NavItem
+          key={name}
+          url={url}
+          name={name}
+          icon={icon}
+          isActive={active}
+          onClick={handleNavClick(url)}
+        />
+      );
+    });
   }, [pathname, handleNavClick]);
 
   return (
