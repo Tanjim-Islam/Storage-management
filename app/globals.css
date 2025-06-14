@@ -129,6 +129,21 @@
     @apply text-[10px] leading-[14px] font-normal;
   }
 
+  /* ============================= LAYOUT CLASSES ============================= */
+  .page-container {
+    @apply flex flex-col flex-1 gap-6 p-4 md:p-6 lg:p-8;
+    position: relative;
+  }
+
+  .back-button {
+    @apply absolute left-4 md:left-6 lg:left-8 top-4 md:top-6 lg:top-8;
+    transition: transform 0.2s ease;
+  }
+
+  .back-button:hover {
+    transform: scale(1.1);
+  }
+
   /* ===== HELPER CLASSES */
   .container {
     @apply mx-auto max-w-7xl px-5;
