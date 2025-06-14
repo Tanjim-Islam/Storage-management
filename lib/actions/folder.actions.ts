@@ -29,15 +29,26 @@ export const createFolder = async (
   }
 };
 
-export const getFolders = async (limit?: number) => {
+export const getFolders = async (sort: string = "$createdAt-desc", limit?: number) => {
   const { databases } = await createAdminClient();
   const currentUser = await getCurrentUser();
   if (!currentUser) throw new Error("User not found");
 
   const queries = [
     Query.equal("ownerId", [currentUser.$id]),
-    Query.orderDesc("$createdAt"),
   ];
+  
+  // Handle sorting
+  if (sort) {
+    const [sortBy, orderBy] = sort.split("-");
+    queries.push(
+      orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy)
+    );
+  } else {
+    // Default sorting
+    queries.push(Query.orderDesc("$createdAt"));
+  }
+  
   if (limit) queries.push(Query.limit(limit));
 
   const folders = await databases.listDocuments(
