@@ -32,7 +32,7 @@ const Page = async ({ searchParams }: { searchParams: Promise<{ sort?: string }>
           ))}
         </section>
       ) : (
-        <p className="empty-list">No folders created</p>
+        <p className="empty-list">No folders uploaded</p>
       )}
     </div>
   );
