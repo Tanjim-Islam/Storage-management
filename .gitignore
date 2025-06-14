@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.windsurfrules
+checklist.md
+tasks.md
+.cursorignore

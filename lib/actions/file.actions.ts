@@ -17,6 +17,7 @@ export const uploadFile = async ({
   file,
   ownerId,
   accountId,
+  folderId,
   path,
 }: UploadFileProps) => {
   const { storage, databases } = await createAdminClient();
@@ -38,6 +39,7 @@ export const uploadFile = async ({
       size: bucketFile.sizeOriginal,
       owner: ownerId,
       accountId,
+      folderId,
       users: [],
       bucketField: bucketFile.$id,
     };
@@ -67,6 +69,7 @@ const createQueries = (
   searchText: string,
   sort: string,
   limit?: number,
+  folderId?: string,
 ) => {
   const queries = [
     Query.or([
@@ -76,6 +79,17 @@ const createQueries = (
   ];
 
   if (types.length > 0) queries.push(Query.equal("type", types));
+  
+  // Handle folder filtering:
+  // - If folderId is provided, get files in that specific folder
+  // - If folderId is undefined, get only root-level files (no folderId)
+  if (folderId) {
+    queries.push(Query.equal("folderId", [folderId]));
+  } else {
+    // Only get files that don't belong to any folder (root-level files)
+    queries.push(Query.isNull("folderId"));
+  }
+  
   if (searchText) queries.push(Query.contains("name", searchText));
   if (limit) queries.push(Query.limit(limit));
 
@@ -95,6 +109,7 @@ export const getFiles = async ({
   searchText = "",
   sort = "$createdAt-desc",
   limit,
+  folderId,
 }: GetFilesProps) => {
   const { databases } = await createAdminClient();
 
@@ -103,7 +118,14 @@ export const getFiles = async ({
 
     if (!currentUser) throw new Error("User not found");
 
-    const queries = createQueries(currentUser, types, searchText, sort, limit);
+    const queries = createQueries(
+      currentUser,
+      types,
+      searchText,
+      sort,
+      limit,
+      folderId,
+    );
 
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,

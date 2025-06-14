@@ -1,9 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { createFolder } from "@/lib/actions/folder.actions";
+import { uploadFile } from "@/lib/actions/file.actions";
+import { ID } from "node-appwrite";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
 export const parseStringify = (value: unknown) =>
   JSON.parse(JSON.stringify(value));
 
@@ -112,7 +116,7 @@ export const formatDateTime = (isoString: string | null | undefined) => {
 
 export const getFileIcon = (
   extension: string | undefined,
-  type: FileType | string,
+  type: FileType | string
 ) => {
   switch (extension) {
     // Document
@@ -174,12 +178,137 @@ export const getFileIcon = (
 
 // APPWRITE URL UTILS
 // Construct appwrite file URL - https://appwrite.io/docs/apis/rest#images
-export const constructFileUrl = (bucketField: string) => {
-  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketField}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
+export const constructFileUrl = (bucketFileId: string) => {
+  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketFileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
 };
 
-export const constructDownloadUrl = (bucketField: string) => {
-  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketField}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
+export const constructDownloadUrl = (bucketFileId: string) => {
+  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketFileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
+};
+
+// Check if files contain folder structure (webkitRelativePath)
+export const hasFolderStructure = (files: File[]): boolean => {
+  return files.some(
+    (file) => file.webkitRelativePath && file.webkitRelativePath.includes("/")
+  );
+};
+
+// Process DataTransfer items to extract files with folder structure
+export const processDataTransferItems = async (
+  items: DataTransferItemList
+): Promise<File[]> => {
+  const files: File[] = [];
+
+  const processEntry = async (entry: any, path = ""): Promise<void> => {
+    if (entry.isFile) {
+      return new Promise((resolve) => {
+        entry.file((file: File) => {
+          // Create a new file object with webkitRelativePath set
+          const newFile = new File([file], file.name, { type: file.type });
+          Object.defineProperty(newFile, "webkitRelativePath", {
+            value: path + file.name,
+            writable: false,
+          });
+          files.push(newFile);
+          resolve();
+        });
+      });
+    } else if (entry.isDirectory) {
+      const dirReader = entry.createReader();
+      return new Promise((resolve) => {
+        dirReader.readEntries(async (entries: any[]) => {
+          for (const childEntry of entries) {
+            await processEntry(childEntry, path + entry.name + "/");
+          }
+          resolve();
+        });
+      });
+    }
+  };
+
+  const promises: Promise<void>[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.kind === "file") {
+      const entry = item.webkitGetAsEntry();
+      if (entry) {
+        promises.push(processEntry(entry));
+      }
+    }
+  }
+
+  await Promise.all(promises);
+  return files;
+};
+
+// Handle folder upload from drag and drop
+export const handleFolderUpload = async (
+  files: File[],
+  ownerId: string,
+  accountId: string,
+  path: string
+): Promise<void> => {
+  // Collect all unique folder paths (including nested folders)
+  const allFolderPaths = new Set<string>();
+  const foldersMap = new Map<string, string>(); // path -> folderId
+
+  files.forEach((file) => {
+    if (file.webkitRelativePath) {
+      const pathParts = file.webkitRelativePath.split("/");
+      // Add all folder paths (excluding the file itself)
+      for (let i = 1; i < pathParts.length; i++) {
+        const folderPath = pathParts.slice(0, i).join("/");
+        allFolderPaths.add(folderPath);
+      }
+    }
+  });
+
+  // Sort folder paths to ensure parent folders are created before children
+  const sortedFolderPaths = Array.from(allFolderPaths).sort();
+
+  // Create folders first
+  for (const folderPath of sortedFolderPaths) {
+    const pathParts = folderPath.split("/");
+    const folderName = pathParts[pathParts.length - 1];
+
+    const folderResult = await createFolder(
+      {
+        name: folderName,
+        ownerId,
+        accountId,
+      },
+      path
+    );
+
+    foldersMap.set(folderPath, folderResult);
+  }
+
+  // Upload files and associate them with their folders
+  const uploadPromises = files.map(async (file) => {
+    if (file.webkitRelativePath) {
+      const pathParts = file.webkitRelativePath.split("/");
+      const folderPath = pathParts.slice(0, -1).join("/");
+      const folderId = foldersMap.get(folderPath);
+
+      return uploadFile({
+        file,
+        ownerId,
+        accountId,
+        folderId,
+        path,
+      });
+    } else {
+      // Handle individual files without folder structure
+      return uploadFile({
+        file,
+        ownerId,
+        accountId,
+        path,
+      });
+    }
+  });
+
+  await Promise.all(uploadPromises);
 };
 
 // DASHBOARD UTILS
@@ -202,11 +331,13 @@ export const getUsageSummary = (totalSpace: any) => {
     {
       title: "Media",
       size: totalSpace.video.size + totalSpace.audio.size,
-      latestDate: totalSpace.video.latestDate && totalSpace.audio.latestDate
-        ? new Date(totalSpace.video.latestDate) > new Date(totalSpace.audio.latestDate)
-          ? totalSpace.video.latestDate
-          : totalSpace.audio.latestDate
-        : totalSpace.video.latestDate || totalSpace.audio.latestDate || "",
+      latestDate:
+        totalSpace.video.latestDate && totalSpace.audio.latestDate
+          ? new Date(totalSpace.video.latestDate) >
+            new Date(totalSpace.audio.latestDate)
+            ? totalSpace.video.latestDate
+            : totalSpace.audio.latestDate
+          : totalSpace.video.latestDate || totalSpace.audio.latestDate || "",
       icon: "/assets/icons/file-video-light.svg",
       url: "/media",
     },

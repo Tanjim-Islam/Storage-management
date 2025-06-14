@@ -10,7 +10,7 @@ const RecentFileRow = ({ file, index }: { file: Models.Document; index: number }
   const { open } = useFileViewer();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 transition-transform duration-200 hover:-translate-y-1">
       <button
         type="button"
         onClick={() => open(index)}
