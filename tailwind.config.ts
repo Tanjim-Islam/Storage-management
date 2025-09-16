@@ -97,11 +97,16 @@ const config: Config = {
   				'0%': { transform: 'translateX(0)' },
   				'50%': { transform: 'translateX(5px)' },
   				'100%': { transform: 'translateX(0)' }
+  			},
+  			'shimmer': {
+  				'0%': { transform: 'translateX(-100%)' },
+  				'100%': { transform: 'translateX(100%)' }
   			}
   		},
   		animation: {
   			'caret-blink': 'caret-blink 1.25s ease-out infinite',
-  			'nav-hover': 'nav-hover 0.5s ease-in-out'
+  			'nav-hover': 'nav-hover 0.5s ease-in-out',
+  			'shimmer': 'shimmer 2s linear infinite'
   		}
   	}
   },
