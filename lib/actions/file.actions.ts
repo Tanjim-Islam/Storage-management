@@ -41,6 +41,11 @@ export const uploadFile = async ({
       accountId,
       folderId,
       users: [],
+      sharedWith: [],
+      sharedEmails: [],
+      isPublic: false,
+      shareToken: null,
+      shareExpiresAt: null,
       bucketField: bucketFile.$id,
     };
 
@@ -74,6 +79,7 @@ const createQueries = (
   const queries = [
     Query.or([
       Query.equal("owner", [currentUser.$id]),
+      Query.contains("sharedEmails", [currentUser.email]),
       Query.contains("users", [currentUser.email]),
     ]),
   ];
@@ -166,11 +172,44 @@ export const renameFile = async ({
   }
 };
 
-export const updateFileUsers = async ({
+export const updateFileInvites = async ({
   fileId,
-  emails,
+  invites,
   path,
-}: UpdateFileUsersProps) => {
+}: UpdateFileInvitesProps) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const normalizedInvites = invites.map((invite) => ({
+      email: invite.email.trim().toLowerCase(),
+      role: invite.role,
+    }));
+
+    const emails = normalizedInvites.map((invite) => invite.email);
+
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        sharedWith: normalizedInvites,
+        sharedEmails: emails,
+        users: emails,
+      },
+    );
+
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, "Failed to update file collaborators");
+  }
+};
+
+export const createFileShareLink = async ({
+  fileId,
+  expiresAt,
+  path,
+}: CreateShareLinkProps) => {
   const { databases } = await createAdminClient();
 
   try {
@@ -179,14 +218,82 @@ export const updateFileUsers = async ({
       appwriteConfig.filesCollectionId,
       fileId,
       {
-        users: emails,
+        isPublic: true,
+        shareToken: ID.unique(),
+        shareExpiresAt: expiresAt ?? null,
       },
     );
 
     revalidatePath(path);
     return parseStringify(updatedFile);
   } catch (error) {
-    handleError(error, "Failed to rename file");
+    handleError(error, "Failed to create share link");
+  }
+};
+
+export const revokeFileShareLink = async ({
+  fileId,
+  path,
+}: RevokeShareLinkProps) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        isPublic: false,
+        shareToken: null,
+        shareExpiresAt: null,
+      },
+    );
+
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, "Failed to revoke share link");
+  }
+};
+
+export const setFileInviteeRole = async ({
+  fileId,
+  email,
+  role,
+  path,
+}: SetInviteeRoleProps) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const existingFile = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+    );
+
+    const invites = Array.isArray(existingFile.sharedWith)
+      ? existingFile.sharedWith
+      : [];
+
+    const updatedInvites = invites.map((invite: ShareInvitee) =>
+      invite.email.toLowerCase() === email.trim().toLowerCase()
+        ? { ...invite, role }
+        : invite,
+    );
+
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        sharedWith: updatedInvites,
+      },
+    );
+
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, "Failed to update invitee role");
   }
 };
 
@@ -228,6 +335,33 @@ export const getFileById = async ({ fileId }: { fileId: string }) => {
     return parseStringify(file);
   } catch (error) {
     handleError(error, "Failed to get file by id");
+  }
+};
+
+export const getFileByShareToken = async (token: string) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const files = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      [
+        Query.equal("shareToken", [token]),
+        Query.equal("isPublic", [true]),
+        Query.limit(1),
+      ],
+    );
+
+    if (files.total === 0) return null;
+
+    const file = files.documents[0];
+    if (file.shareExpiresAt && new Date(file.shareExpiresAt) < new Date()) {
+      return null;
+    }
+
+    return parseStringify(file);
+  } catch (error) {
+    handleError(error, "Failed to get file by share token");
   }
 };
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { RxCross2 } from "react-icons/rx";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 import { useState, useEffect } from "react";
+import { constructFileUrl, buildShareLink } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   file: Models.Document;
@@ -13,6 +15,7 @@ interface Props {
   onPrev?: () => void;
   onNext?: () => void;
   onClose?: () => void;
+  shareToken?: string;
 }
 
 const FileViewer = ({
@@ -22,16 +25,34 @@ const FileViewer = ({
   onPrev,
   onNext,
   onClose,
+  shareToken,
 }: Props) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [contentKey, setContentKey] = useState(0);
+  const [copyLabel, setCopyLabel] = useState("Copy link");
+
+  const effectiveToken = shareToken ?? (file.shareToken as string | undefined);
+  const fileUrl = constructFileUrl(file.bucketField, effectiveToken);
+  const shareLink = effectiveToken ? buildShareLink(effectiveToken) : "";
 
   useEffect(() => {
     // Reset loading state and trigger content animation when file changes
     setIsLoading(false);
     setContentKey((prev) => prev + 1);
-  }, [file.$id]);
+    setCopyLabel("Copy link");
+  }, [file.$id, shareLink]);
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopyLabel("Copied!");
+      setTimeout(() => setCopyLabel("Copy link"), 2000);
+    } catch (error) {
+      console.error("Failed to copy share link", error);
+    }
+  };
 
   const handlePrev = async () => {
     if (isLoading) return;
@@ -61,7 +82,7 @@ const FileViewer = ({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={contentKey}
-          src={file.url}
+          src={fileUrl}
           alt={file.name}
           className={`max-h-[90vh] max-w-full object-contain transition-all duration-500 ease-out ${
             isLoading ? "opacity-0 scale-95" : "opacity-100 scale-100"
@@ -75,7 +96,7 @@ const FileViewer = ({
       return (
         <video
           key={contentKey}
-          src={file.url}
+          src={fileUrl}
           controls
           className={`max-h-[90vh] max-w-full w-full transition-all duration-500 ease-out ${
             isLoading ? "opacity-0 scale-95" : "opacity-100 scale-100"
@@ -89,7 +110,7 @@ const FileViewer = ({
       return (
         <audio
           key={contentKey}
-          src={file.url}
+          src={fileUrl}
           controls
           className={`w-full max-w-md transition-all duration-500 ease-out ${
             isLoading ? "opacity-0 scale-95" : "opacity-100 scale-100"
@@ -102,7 +123,7 @@ const FileViewer = ({
     return (
       <iframe
         key={contentKey}
-        src={file.url}
+        src={fileUrl}
         title={file.name}
         className={`w-full h-full max-w-full max-h-full transition-all duration-500 ease-out ${
           isLoading ? "opacity-0 scale-95" : "opacity-100 scale-100"
@@ -172,6 +193,23 @@ const FileViewer = ({
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      )}
+
+      {shareLink && (
+        <div className="absolute bottom-5 left-1/2 z-10 flex w-full max-w-xl -translate-x-1/2 flex-col items-center gap-2 rounded-2xl bg-black/70 p-3 text-white backdrop-blur-md">
+          <p className="text-xs uppercase tracking-wide text-white/70">Share link</p>
+          <div className="flex w-full flex-col gap-2 md:flex-row md:items-center">
+            <p className="flex-1 truncate text-sm font-medium">{shareLink}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleCopyLink}
+              className="whitespace-nowrap"
+            >
+              {copyLabel}
+            </Button>
+          </div>
         </div>
       )}
     </div>

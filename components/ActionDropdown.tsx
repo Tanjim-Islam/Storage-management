@@ -20,16 +20,25 @@ import Image from "next/image";
 import { Models } from "node-appwrite";
 import { actionsDropdownItems } from "@/constants";
 import Link from "next/link";
-import { constructDownloadUrl } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   deleteFile,
   renameFile,
-  updateFileUsers,
+  updateFileInvites,
+  createFileShareLink,
+  revokeFileShareLink,
+  setFileInviteeRole,
 } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
-import { FileDetails, ShareInput } from "@/components/ActionsModalContent";
+import { FileDetails, FileShareSettings } from "@/components/ActionsModalContent";
+import {
+  buildShareLink,
+  constructDownloadUrl,
+  formatDateTime,
+} from "@/lib/utils";
+
+type ShareExpirationOption = "24h" | "7d" | "30d" | "never";
 
 const ActionDropdown = ({ file }: { file: Models.Document }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,49 +46,226 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
   const [action, setAction] = useState<ActionType | null>(null);
   const [name, setName] = useState(file.name);
   const [isLoading, setIsLoading] = useState(false);
-  const [emails, setEmails] = useState<string[]>([]);
+  const [invites, setInvites] = useState<ShareInvitee[]>(() => {
+    if (Array.isArray(file.sharedWith) && file.sharedWith.length) {
+      return file.sharedWith as ShareInvitee[];
+    }
+
+    if (Array.isArray(file.users) && file.users.length) {
+      return (file.users as string[]).map((email) => ({
+        email,
+        role: "viewer",
+      }));
+    }
+
+    return [];
+  });
+  const [isPublic, setIsPublic] = useState<boolean>(Boolean(file.isPublic));
+  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(
+    file.shareExpiresAt ?? null,
+  );
+  const [shareLink, setShareLink] = useState<string>(() =>
+    file.shareToken ? buildShareLink(file.shareToken as string) : "",
+  );
+  const [newInviteEmail, setNewInviteEmail] = useState("");
+  const [newInviteRole, setNewInviteRole] = useState<ShareRole>("viewer");
+  const [expirationOption, setExpirationOption] =
+    useState<ShareExpirationOption>("7d");
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [isRevokingLink, setIsRevokingLink] = useState(false);
+  const [isInviteLoading, setIsInviteLoading] = useState(false);
+  const [roleUpdatingEmail, setRoleUpdatingEmail] = useState<string | null>(
+    null,
+  );
+  const [copyLabel, setCopyLabel] = useState("Copy link");
 
   const path = usePathname();
+
+  const resetShareState = () => {
+    const initialInvites = Array.isArray(file.sharedWith)
+      ? (file.sharedWith as ShareInvitee[])
+      : Array.isArray(file.users)
+        ? (file.users as string[]).map((email) => ({
+            email,
+            role: "viewer" as ShareRole,
+          }))
+        : [];
+
+    setInvites(initialInvites);
+    const token = (file.shareToken as string) ?? null;
+    setIsPublic(Boolean(file.isPublic));
+    setShareExpiresAt((file.shareExpiresAt as string) ?? null);
+    setShareLink(token ? buildShareLink(token) : "");
+    setNewInviteEmail("");
+    setNewInviteRole("viewer");
+    setExpirationOption("7d");
+    setCopyLabel("Copy link");
+    setIsGeneratingLink(false);
+    setIsRevokingLink(false);
+    setIsInviteLoading(false);
+    setRoleUpdatingEmail(null);
+  };
 
   const closeAllModals = () => {
     setIsModalOpen(false);
     setIsDropdownOpen(false);
     setAction(null);
     setName(file.name);
-    //   setEmails([]);
+    resetShareState();
   };
 
   const handleAction = async () => {
     if (!action) return;
+    if (action.value === "share") return;
     setIsLoading(true);
     let success = false;
 
     const actions = {
       rename: () =>
         renameFile({ fileId: file.$id, name, extension: file.extension, path }),
-      share: () => updateFileUsers({ fileId: file.$id, emails, path }),
       delete: () =>
         deleteFile({ fileId: file.$id, bucketField: file.bucketField, path }),
     };
 
-    success = await actions[action.value as keyof typeof actions]();
+    success = await actions[action.value as keyof typeof actions]!();
 
     if (success) closeAllModals();
 
     setIsLoading(false);
   };
 
-  const handleRemoveUser = async (email: string) => {
-    const updatedEmails = emails.filter((e) => e !== email);
+  const syncFromDocument = (doc: Models.Document) => {
+    const nextInvites = Array.isArray(doc.sharedWith)
+      ? (doc.sharedWith as ShareInvitee[])
+      : [];
+    setInvites(nextInvites);
+    const token = (doc.shareToken as string) ?? null;
+    setIsPublic(Boolean(doc.isPublic));
+    setShareExpiresAt((doc.shareExpiresAt as string) ?? null);
+    setShareLink(token ? buildShareLink(token) : "");
+  };
 
-    const success = await updateFileUsers({
-      fileId: file.$id,
-      emails: updatedEmails,
-      path,
-    });
+  const computeExpirationDate = (option: ShareExpirationOption) => {
+    if (option === "never") return null;
 
-    if (success) setEmails(updatedEmails);
-    closeAllModals();
+    const optionMap: Record<ShareExpirationOption, number> = {
+      "24h": 24,
+      "7d": 24 * 7,
+      "30d": 24 * 30,
+      never: 0,
+    };
+
+    const hours = optionMap[option];
+    const expires = new Date();
+    expires.setHours(expires.getHours() + hours);
+    return expires.toISOString();
+  };
+
+  const handleGenerateLink = async () => {
+    setIsGeneratingLink(true);
+    try {
+      const expiresAt = computeExpirationDate(expirationOption);
+      const updated = await createFileShareLink({
+        fileId: file.$id,
+        expiresAt,
+        path,
+      });
+
+      if (updated) {
+        syncFromDocument(updated);
+        if (expiresAt) {
+          setShareExpiresAt(expiresAt);
+        }
+      }
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleRevokeLink = async () => {
+    setIsRevokingLink(true);
+    try {
+      const updated = await revokeFileShareLink({ fileId: file.$id, path });
+      if (updated) {
+        syncFromDocument(updated);
+        setShareExpiresAt(null);
+      }
+    } finally {
+      setIsRevokingLink(false);
+    }
+  };
+
+  const persistInvites = async (nextInvites: ShareInvitee[]) => {
+    setIsInviteLoading(true);
+    try {
+      const updated = await updateFileInvites({
+        fileId: file.$id,
+        invites: nextInvites,
+        path,
+      });
+
+      if (updated) {
+        syncFromDocument(updated);
+        setNewInviteEmail("");
+        setNewInviteRole("viewer");
+      }
+    } finally {
+      setIsInviteLoading(false);
+    }
+  };
+
+  const handleAddInvite = async () => {
+    if (!newInviteEmail.trim()) return;
+
+    const normalizedEmail = newInviteEmail.trim().toLowerCase();
+    const existingIndex = invites.findIndex(
+      (invite) => invite.email === normalizedEmail,
+    );
+
+    let nextInvites = invites;
+    if (existingIndex === -1) {
+      nextInvites = [...invites, { email: normalizedEmail, role: newInviteRole }];
+    } else {
+      nextInvites = invites.map((invite, index) =>
+        index === existingIndex ? { ...invite, role: newInviteRole } : invite,
+      );
+    }
+
+    await persistInvites(nextInvites);
+  };
+
+  const handleInviteRoleChange = async (email: string, role: ShareRole) => {
+    setRoleUpdatingEmail(email);
+    try {
+      const updated = await setFileInviteeRole({
+        fileId: file.$id,
+        email,
+        role,
+        path,
+      });
+
+      if (updated) {
+        syncFromDocument(updated);
+      }
+    } finally {
+      setRoleUpdatingEmail(null);
+    }
+  };
+
+  const handleRemoveInvite = async (email: string) => {
+    const nextInvites = invites.filter((invite) => invite.email !== email);
+    await persistInvites(nextInvites);
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopyLabel("Copied!");
+      setTimeout(() => setCopyLabel("Copy link"), 2000);
+    } catch (error) {
+      console.error("Failed to copy link", error);
+    }
   };
 
   const renderDialogContent = () => {
@@ -102,10 +288,32 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
           )}
           {value === "details" && <FileDetails file={file} />}
           {value === "share" && (
-            <ShareInput
+            <FileShareSettings
               file={file}
-              onInputChange={setEmails}
-              onRemove={handleRemoveUser}
+              shareLink={shareLink}
+              isPublic={isPublic}
+              shareExpiresAt={shareExpiresAt}
+              expirationOption={expirationOption}
+              onExpirationChange={setExpirationOption}
+              onGenerateLink={handleGenerateLink}
+              onRevokeLink={handleRevokeLink}
+              onCopyLink={handleCopyLink}
+              invites={invites}
+              newInviteEmail={newInviteEmail}
+              newInviteRole={newInviteRole}
+              onNewInviteEmailChange={setNewInviteEmail}
+              onNewInviteRoleChange={setNewInviteRole}
+              onAddInvite={handleAddInvite}
+              onInviteRoleChange={handleInviteRoleChange}
+              onRemoveInvite={handleRemoveInvite}
+              isGeneratingLink={isGeneratingLink}
+              isRevokingLink={isRevokingLink}
+              isInviteLoading={isInviteLoading}
+              roleUpdatingEmail={roleUpdatingEmail}
+              copyLabel={copyLabel}
+              expiresLabel={
+                shareExpiresAt ? formatDateTime(shareExpiresAt) : "No expiration"
+              }
             />
           )}
           {value === "delete" && (
@@ -115,7 +323,14 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
             </p>
           )}
         </DialogHeader>
-        {["rename", "delete", "share"].includes(value) && (
+        {value === "share" && (
+          <DialogFooter className="flex justify-end">
+            <Button onClick={closeAllModals} className="modal-cancel-button">
+              Close
+            </Button>
+          </DialogFooter>
+        )}
+        {["rename", "delete"].includes(value) && (
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button onClick={closeAllModals} className="modal-cancel-button">
               Cancel

@@ -39,9 +39,34 @@ declare interface RenameFileProps {
   extension: string;
   path: string;
 }
-declare interface UpdateFileUsersProps {
+declare type ShareRole = "viewer" | "editor";
+
+declare interface ShareInvitee {
+  email: string;
+  role: ShareRole;
+}
+
+declare interface UpdateFileInvitesProps {
   fileId: string;
-  emails: string[];
+  invites: ShareInvitee[];
+  path: string;
+}
+
+declare interface CreateShareLinkProps {
+  fileId: string;
+  expiresAt?: string | null;
+  path: string;
+}
+
+declare interface RevokeShareLinkProps {
+  fileId: string;
+  path: string;
+}
+
+declare interface SetInviteeRoleProps {
+  fileId: string;
+  email: string;
+  role: ShareRole;
   path: string;
 }
 declare interface DeleteFileProps {

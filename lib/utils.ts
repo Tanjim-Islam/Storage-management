@@ -178,12 +178,35 @@ export const getFileIcon = (
 
 // APPWRITE URL UTILS
 // Construct appwrite file URL - https://appwrite.io/docs/apis/rest#images
-export const constructFileUrl = (bucketFileId: string) => {
-  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketFileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
+const constructSecureRoute = (
+  bucketFileId: string,
+  mode: "view" | "download",
+  token?: string,
+) => {
+  const base = `/api/files/${bucketFileId}/${mode}`;
+  return token ? `${base}?token=${token}` : base;
 };
 
-export const constructDownloadUrl = (bucketFileId: string) => {
-  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET}/files/${bucketFileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT}`;
+export const constructFileUrl = (bucketFileId: string, token?: string) => {
+  return constructSecureRoute(bucketFileId, "view", token);
+};
+
+export const constructDownloadUrl = (bucketFileId: string, token?: string) => {
+  return constructSecureRoute(bucketFileId, "download", token);
+};
+
+export const buildShareLink = (token: string) => {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    const normalized = appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl;
+    return `${normalized}/share/${token}`;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/share/${token}`;
+  }
+
+  return `/share/${token}`;
 };
 
 // Check if files contain folder structure (webkitRelativePath)
