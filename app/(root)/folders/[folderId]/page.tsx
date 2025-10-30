@@ -11,6 +11,22 @@ const Page = async ({ params }: { params: { folderId: string } }) => {
   const folder = await getFolderById(folderId);
   const files = await getFiles({ types: [], folderId });
 
+  if (!folder) {
+    return (
+      <div className="page-container">
+        <Link
+          href="/folders"
+          className="back-button mb-4 inline-flex items-center justify-center p-2 rounded-full transition-all hover:shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+        >
+          <Image src="/assets/icons/back.svg" alt="Back" width={24} height={24} />
+        </Link>
+        <p className="empty-list">
+          We couldn&apos;t load this folder right now. Please try again later.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <FileViewerProvider files={files.documents}>
       <div className="page-container">

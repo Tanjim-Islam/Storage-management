@@ -2,15 +2,59 @@
 
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
-import { ID, Models, Query } from "node-appwrite";
+import { AppwriteException, ID, Models, Query } from "node-appwrite";
 import { constructFileUrl, getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 
-const handleError = (error: unknown, message: string) => {
-  console.log(error, message);
-  throw error;
+const SERVICE_UNAVAILABLE_MESSAGE =
+  "Our storage service is temporarily unavailable. Please try again in a moment.";
+
+const extractErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof AppwriteException) {
+    if (typeof error.code === "number" && error.code >= 500) {
+      return SERVICE_UNAVAILABLE_MESSAGE;
+    }
+
+    return error.message || fallback;
+  }
+
+  if (error instanceof Error) {
+    const message = error.message?.trim();
+
+    if (!message) return fallback;
+    if (message.startsWith("<!DOCTYPE") || /<[^>]+>/.test(message)) {
+      return SERVICE_UNAVAILABLE_MESSAGE;
+    }
+
+    return message;
+  }
+
+  if (typeof error === "string") {
+    const message = error.trim();
+
+    if (!message) return fallback;
+    if (message.startsWith("<!DOCTYPE") || /<[^>]+>/.test(message)) {
+      return SERVICE_UNAVAILABLE_MESSAGE;
+    }
+
+    return message;
+  }
+
+  return fallback;
 };
+
+const handleError = (error: unknown, message: string): never => {
+  const friendlyMessage = extractErrorMessage(error, message);
+  console.error(message, error);
+  throw new Error(friendlyMessage);
+};
+
+const emptyDocumentList = () =>
+  parseStringify({
+    documents: [],
+    total: 0,
+  });
 
 export const uploadFile = async ({
   fileId,
@@ -45,7 +89,15 @@ export const uploadFile = async ({
         fileDocument,
       )
       .catch(async (error: unknown) => {
-        await storage.deleteFile(appwriteConfig.bucketId, fileId);
+        try {
+          await storage.deleteFile(appwriteConfig.bucketId, fileId);
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up file after metadata creation error",
+            cleanupError,
+          );
+        }
+
         handleError(error, "Failed to create file document");
       });
 
@@ -109,7 +161,10 @@ export const getFiles = async ({
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser) throw new Error("User not found");
+    if (!currentUser) {
+      console.warn("getFiles: No authenticated user found");
+      return emptyDocumentList();
+    }
 
     const queries = createQueries(
       currentUser,
@@ -129,7 +184,8 @@ export const getFiles = async ({
     console.log({ files });
     return parseStringify(files);
   } catch (error) {
-    handleError(error, "Failed to get files");
+    console.error("Failed to get files", error);
+    return emptyDocumentList();
   }
 };
 
@@ -229,7 +285,8 @@ export async function getTotalSpaceUsed() {
   try {
     const { databases } = await createSessionClient();
     const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User is not authenticated.");
+    if (!currentUser)
+      throw new Error("Unable to determine the current user session.");
 
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,
@@ -262,6 +319,15 @@ export async function getTotalSpaceUsed() {
 
     return parseStringify(totalSpace);
   } catch (error) {
-    handleError(error, "Error calculating total space used:, ");
+    console.error("Error calculating total space used", error);
+    return parseStringify({
+      image: { size: 0, latestDate: "" },
+      document: { size: 0, latestDate: "" },
+      video: { size: 0, latestDate: "" },
+      audio: { size: 0, latestDate: "" },
+      other: { size: 0, latestDate: "" },
+      used: 0,
+      all: 2 * 1024 * 1024 * 1024,
+    });
   }
 }

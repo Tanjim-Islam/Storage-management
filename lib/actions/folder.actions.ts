@@ -25,39 +25,55 @@ export const createFolder = async (
     return doc.$id;
   } catch (error) {
     console.error("createFolder: Error creating folder:", error);
-    throw new Error("Failed to create folder");
+    throw new Error(
+      "We couldn't create that folder because the storage service is unavailable. Please retry shortly.",
+    );
   }
 };
 
+const emptyFolderList = () =>
+  parseStringify({
+    documents: [],
+    total: 0,
+  });
+
 export const getFolders = async (sort: string = "$createdAt-desc", limit?: number) => {
   const { databases } = await createAdminClient();
-  const currentUser = await getCurrentUser();
-  if (!currentUser) throw new Error("User not found");
 
-  const queries = [
-    Query.equal("ownerId", [currentUser.$id]),
-  ];
-  
-  // Handle sorting
-  if (sort) {
-    const [sortBy, orderBy] = sort.split("-");
-    queries.push(
-      orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy)
+  try {
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      console.warn("getFolders: No authenticated user found");
+      return emptyFolderList();
+    }
+
+    const queries = [Query.equal("ownerId", [currentUser.$id])];
+
+    // Handle sorting
+    if (sort) {
+      const [sortBy, orderBy] = sort.split("-");
+      queries.push(
+        orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy)
+      );
+    } else {
+      // Default sorting
+      queries.push(Query.orderDesc("$createdAt"));
+    }
+
+    if (limit) queries.push(Query.limit(limit));
+
+    const folders = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.foldersCollectionId,
+      queries
     );
-  } else {
-    // Default sorting
-    queries.push(Query.orderDesc("$createdAt"));
+
+    return parseStringify(folders);
+  } catch (error) {
+    console.error("Failed to get folders", error);
+    return emptyFolderList();
   }
-  
-  if (limit) queries.push(Query.limit(limit));
-
-  const folders = await databases.listDocuments(
-    appwriteConfig.databaseId,
-    appwriteConfig.foldersCollectionId,
-    queries
-  );
-
-  return parseStringify(folders);
 };
 
 export const getFolderById = async (folderId: string) => {
@@ -70,8 +86,8 @@ export const getFolderById = async (folderId: string) => {
     );
     return parseStringify(folder);
   } catch (error) {
-    console.error(error);
-    throw new Error("Failed to get folder");
+    console.error("Failed to get folder", error);
+    return null;
   }
 };
 
