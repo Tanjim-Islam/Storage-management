@@ -42,7 +42,6 @@ export const uploadFile = async ({
       folderId,
       users: [],
       sharedWith: [],
-      sharedEmails: [],
       isPublic: false,
       shareToken: null,
       shareExpiresAt: null,
@@ -79,7 +78,6 @@ const createQueries = (
   const queries = [
     Query.or([
       Query.equal("owner", [currentUser.$id]),
-      Query.contains("sharedEmails", [currentUser.email]),
       Query.contains("users", [currentUser.email]),
     ]),
   ];
@@ -193,7 +191,6 @@ export const updateFileInvites = async ({
       fileId,
       {
         sharedWith: normalizedInvites,
-        sharedEmails: emails,
         users: emails,
       },
     );

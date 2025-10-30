@@ -54,10 +54,12 @@ export const authorizeFileAccess = async (
   }
 
   const ownerId = extractOwnerId(file.owner);
-  const sharedEmails = Array.isArray(file.sharedEmails)
-    ? file.sharedEmails
-    : Array.isArray(file.users)
-      ? file.users
+  const sharedEmails = Array.isArray(file.users)
+    ? file.users
+    : Array.isArray(file.sharedWith)
+      ? file.sharedWith
+          .map((invite: { email?: string }) => invite?.email)
+          .filter((email: string | undefined): email is string => !!email)
       : [];
 
   const isOwner = currentUser && ownerId && ownerId === currentUser.$id;
