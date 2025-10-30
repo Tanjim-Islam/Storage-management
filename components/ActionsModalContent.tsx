@@ -108,7 +108,6 @@ type ShareExpirationOption = "24h" | "7d" | "30d" | "never";
 interface FileShareSettingsProps {
   file: Models.Document;
   shareLink: string;
-  isPublic: boolean;
   shareExpiresAt: string | null;
   expirationOption: ShareExpirationOption;
   onExpirationChange: (value: ShareExpirationOption) => void;
@@ -146,7 +145,6 @@ const expirationOptions: { label: string; value: ShareExpirationOption }[] = [
 export const FileShareSettings = ({
   file,
   shareLink,
-  isPublic,
   shareExpiresAt,
   expirationOption,
   onExpirationChange,
@@ -178,7 +176,7 @@ export const FileShareSettings = ({
       <div className="share-wrapper space-y-6">
         <section className="space-y-3">
           <p className="subtitle-2 pl-1 text-light-100">Share link</p>
-          {isPublic && shareLink ? (
+          {shareLink ? (
             <div className="space-y-3">
               <div className="flex flex-col gap-2 md:flex-row">
                 <Input value={shareLink} readOnly className="share-input-field flex-1" />

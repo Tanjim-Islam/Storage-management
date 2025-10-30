@@ -42,7 +42,6 @@ export const uploadFile = async ({
       folderId,
       users: [],
       sharedWith: [],
-      isPublic: false,
       shareToken: null,
       shareExpiresAt: null,
       bucketField: bucketFile.$id,
@@ -215,7 +214,6 @@ export const createFileShareLink = async ({
       appwriteConfig.filesCollectionId,
       fileId,
       {
-        isPublic: true,
         shareToken: ID.unique(),
         shareExpiresAt: expiresAt ?? null,
       },
@@ -240,7 +238,6 @@ export const revokeFileShareLink = async ({
       appwriteConfig.filesCollectionId,
       fileId,
       {
-        isPublic: false,
         shareToken: null,
         shareExpiresAt: null,
       },
@@ -344,7 +341,6 @@ export const getFileByShareToken = async (token: string) => {
       appwriteConfig.filesCollectionId,
       [
         Query.equal("shareToken", [token]),
-        Query.equal("isPublic", [true]),
         Query.limit(1),
       ],
     );

@@ -60,7 +60,6 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
 
     return [];
   });
-  const [isPublic, setIsPublic] = useState<boolean>(Boolean(file.isPublic));
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(
     file.shareExpiresAt ?? null,
   );
@@ -93,7 +92,6 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
 
     setInvites(initialInvites);
     const token = (file.shareToken as string) ?? null;
-    setIsPublic(Boolean(file.isPublic));
     setShareExpiresAt((file.shareExpiresAt as string) ?? null);
     setShareLink(token ? buildShareLink(token) : "");
     setNewInviteEmail("");
@@ -140,7 +138,6 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
       : [];
     setInvites(nextInvites);
     const token = (doc.shareToken as string) ?? null;
-    setIsPublic(Boolean(doc.isPublic));
     setShareExpiresAt((doc.shareExpiresAt as string) ?? null);
     setShareLink(token ? buildShareLink(token) : "");
   };
@@ -291,7 +288,6 @@ const ActionDropdown = ({ file }: { file: Models.Document }) => {
             <FileShareSettings
               file={file}
               shareLink={shareLink}
-              isPublic={isPublic}
               shareExpiresAt={shareExpiresAt}
               expirationOption={expirationOption}
               onExpirationChange={setExpirationOption}

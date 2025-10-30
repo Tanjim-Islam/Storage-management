@@ -67,7 +67,6 @@ export const authorizeFileAccess = async (
 
   const hasValidToken =
     !!token &&
-    file.isPublic &&
     file.shareToken === token &&
     (!file.shareExpiresAt || new Date(file.shareExpiresAt) > new Date());
 
