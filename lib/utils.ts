@@ -1,8 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { createFolder } from "@/lib/actions/folder.actions";
-import { uploadFile } from "@/lib/actions/file.actions";
-import { ID } from "node-appwrite";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -247,7 +245,7 @@ export const handleFolderUpload = async (
   ownerId: string,
   accountId: string,
   path: string
-): Promise<void> => {
+): Promise<Map<string, string>> => {
   // Collect all unique folder paths (including nested folders)
   const allFolderPaths = new Set<string>();
   const foldersMap = new Map<string, string>(); // path -> folderId
@@ -283,32 +281,7 @@ export const handleFolderUpload = async (
     foldersMap.set(folderPath, folderResult);
   }
 
-  // Upload files and associate them with their folders
-  const uploadPromises = files.map(async (file) => {
-    if (file.webkitRelativePath) {
-      const pathParts = file.webkitRelativePath.split("/");
-      const folderPath = pathParts.slice(0, -1).join("/");
-      const folderId = foldersMap.get(folderPath);
-
-      return uploadFile({
-        file,
-        ownerId,
-        accountId,
-        folderId,
-        path,
-      });
-    } else {
-      // Handle individual files without folder structure
-      return uploadFile({
-        file,
-        ownerId,
-        accountId,
-        path,
-      });
-    }
-  });
-
-  await Promise.all(uploadPromises);
+  return foldersMap;
 };
 
 // DASHBOARD UTILS

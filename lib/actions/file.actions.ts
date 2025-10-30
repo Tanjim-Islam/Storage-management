@@ -1,7 +1,6 @@
 "use server";
 
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
-import { InputFile } from "node-appwrite/file";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { ID, Models, Query } from "node-appwrite";
 import { constructFileUrl, getFileType, parseStringify } from "@/lib/utils";
@@ -14,7 +13,9 @@ const handleError = (error: unknown, message: string) => {
 };
 
 export const uploadFile = async ({
-  file,
+  fileId,
+  name,
+  size,
   ownerId,
   accountId,
   folderId,
@@ -23,25 +24,17 @@ export const uploadFile = async ({
   const { storage, databases } = await createAdminClient();
 
   try {
-    const inputFile = InputFile.fromBuffer(file, file.name);
-
-    const bucketFile = await storage.createFile(
-      appwriteConfig.bucketId,
-      ID.unique(),
-      inputFile,
-    );
-
     const fileDocument = {
-      type: getFileType(bucketFile.name).type,
-      name: bucketFile.name,
-      url: constructFileUrl(bucketFile.$id),
-      extension: getFileType(bucketFile.name).extension,
-      size: bucketFile.sizeOriginal,
+      type: getFileType(name).type,
+      name,
+      url: constructFileUrl(fileId),
+      extension: getFileType(name).extension,
+      size,
       owner: ownerId,
       accountId,
       folderId,
       users: [],
-      bucketField: bucketFile.$id,
+      bucketField: fileId,
     };
 
     const newFile = await databases
@@ -52,14 +45,14 @@ export const uploadFile = async ({
         fileDocument,
       )
       .catch(async (error: unknown) => {
-        await storage.deleteFile(appwriteConfig.bucketId, bucketFile.$id);
+        await storage.deleteFile(appwriteConfig.bucketId, fileId);
         handleError(error, "Failed to create file document");
       });
 
     revalidatePath(path);
     return parseStringify(newFile);
   } catch (error) {
-    handleError(error, "Failed to upload file");
+    handleError(error, "Failed to store file metadata");
   }
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   cn,
@@ -14,8 +14,15 @@ import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import { MAX_FILE_SIZE } from "@/constants";
 import { useToast } from "@/hooks/use-toast";
-import { uploadFile } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
+import { useUploadManager, type UploadStatus } from "@/hooks/use-upload-manager";
+
+const STATUS_LABELS: Record<UploadStatus, string> = {
+  uploading: "Uploading",
+  success: "Completed",
+  error: "Failed",
+  canceled: "Canceled",
+};
 
 interface Props {
   ownerId: string;
@@ -26,60 +33,70 @@ interface Props {
 const FileUploader = ({ ownerId, accountId, className }: Props) => {
   const path = usePathname();
   const { toast } = useToast();
-  const [files, setFiles] = useState<File[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processFiles = async (filesToProcess: File[]) => {
-    try {
-      setFiles(filesToProcess);
-
-      // Check if any files have folder structure
-      if (hasFolderStructure(filesToProcess)) {
-        // Handle as folder upload
-        await handleFolderUpload(filesToProcess, ownerId, accountId, path);
-        toast({ description: "Folder uploaded successfully!" });
-      } else {
-        // Handle as individual file uploads
-        const uploadPromises = filesToProcess.map(async (file) => {
-          if (file.size > MAX_FILE_SIZE) {
-            setFiles((prevFiles) =>
-              prevFiles.filter((f) => f.name !== file.name)
-            );
-
-            return toast({
-              description: (
-                <p className="body-2 text-white">
-                  <span className="font-semibold">{file.name}</span> is too
-                  large. Max file size is 50MB.
-                </p>
-              ),
-              className: "error-toast",
-            });
-          }
-
-          return uploadFile({ file, ownerId, accountId, path }).then(
-            (uploadedFile) => {
-              if (uploadedFile) {
-                setFiles((prevFiles) =>
-                  prevFiles.filter((f) => f.name !== file.name)
-                );
-              }
-            }
-          );
-        });
-
-        await Promise.all(uploadPromises);
-      }
-    } catch (error) {
-      console.error("Error uploading:", error);
+  const notifyError = useCallback(
+    (message: string) => {
       toast({
-        description: "Failed to upload. Please try again.",
+        description: (
+          <p className="body-2 text-white">
+            {message}
+          </p>
+        ),
         className: "error-toast",
       });
-    } finally {
-      // Clear files after upload
-      setFiles([]);
+    },
+    [toast],
+  );
+
+  const { uploads, addFiles, cancelUpload, retryUpload, removeUpload } =
+    useUploadManager({
+      ownerId,
+      accountId,
+      path,
+      notifyError,
+    });
+
+  const processFiles = async (filesToProcess: File[]) => {
+    try {
+      let folderMap: Map<string, string> | undefined;
+
+      if (hasFolderStructure(filesToProcess)) {
+        folderMap = await handleFolderUpload(
+          filesToProcess,
+          ownerId,
+          accountId,
+          path,
+        );
+      }
+
+      const validFiles = filesToProcess.filter((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          toast({
+            description: (
+              <p className="body-2 text-white">
+                <span className="font-semibold">{file.name}</span> is too
+                large. Max file size is 50MB.
+              </p>
+            ),
+            className: "error-toast",
+          });
+          return false;
+        }
+
+        return true;
+      });
+
+      if (validFiles.length > 0) {
+        addFiles(validFiles, { folderMap });
+      }
+    } catch (error) {
+      console.error("Error preparing upload:", error);
+      toast({
+        description: "Failed to start upload. Please try again.",
+        className: "error-toast",
+      });
     }
   };
 
@@ -105,15 +122,11 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
     e.stopPropagation();
     setIsDragActive(false);
 
-    console.log("Drop event triggered");
-    console.log("DataTransfer items:", e.dataTransfer.items);
-
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
       try {
         const filesToProcess = await processDataTransferItems(
           e.dataTransfer.items
         );
-        console.log("Processed files:", filesToProcess);
         if (filesToProcess.length > 0) {
           await processFiles(filesToProcess);
         }
@@ -143,10 +156,10 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
 
   const handleRemoveFile = (
     e: React.MouseEvent<HTMLImageElement, MouseEvent>,
-    fileName: string
+    uploadId: string
   ) => {
     e.stopPropagation();
-    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
+    removeUpload(uploadId);
   };
 
   return (
@@ -178,43 +191,81 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
         />{" "}
         <p>Upload File</p>
       </Button>
-      {files.length > 0 && (
+      {uploads.length > 0 && (
         <ul className="uploader-preview-list">
           <h4 className="h4 text-light-100">Uploading</h4>
 
-          {files.map((file, index) => {
-            const { type, extension } = getFileType(file.name);
+          {uploads.map((upload) => {
+            const { type, extension } = getFileType(upload.file.name);
 
             return (
               <li
-                key={`${file.name}-${index}`}
+                key={upload.id}
                 className="uploader-preview-item"
               >
                 <div className="flex items-center gap-3">
                   <Thumbnail
                     type={type}
                     extension={extension}
-                    url={convertFileToUrl(file)}
+                    url={convertFileToUrl(upload.file)}
                   />
 
                   <div className="preview-item-name">
-                    {file.name}
-                    <Image
-                      src="/assets/icons/file-loader.gif"
-                      width={80}
-                      height={26}
-                      alt="Loader"
-                    />
+                    <p>{upload.file.name}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-32 h-1.5 bg-dark-600 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand transition-all"
+                          style={{ width: `${upload.progress}%` }}
+                        />
+                      </div>
+                      <span className="body-3 text-light-300">
+                        {upload.progress}%
+                      </span>
+                    </div>
+                    <p className="body-3 text-light-300">
+                      {upload.error
+                        ? upload.error
+                        : STATUS_LABELS[upload.status]}
+                    </p>
                   </div>
                 </div>
 
-                <Image
-                  src="/assets/icons/remove.svg"
-                  width={24}
-                  height={24}
-                  alt="Remove"
-                  onClick={(e) => handleRemoveFile(e, file.name)}
-                />
+                <div className="flex items-center gap-2">
+                  {upload.status === "uploading" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shad-button-ghost px-2"
+                      onClick={() => cancelUpload(upload.id)}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+
+                  {(upload.status === "error" ||
+                    upload.status === "canceled") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shad-button-ghost px-2"
+                      onClick={() => retryUpload(upload.id)}
+                    >
+                      Retry
+                    </Button>
+                  )}
+
+                  <Image
+                    src="/assets/icons/remove.svg"
+                    width={24}
+                    height={24}
+                    alt="Remove"
+                    onClick={(e) => {
+                      handleRemoveFile(e, upload.id);
+                    }}
+                    className="cursor-pointer"
+                  />
+                </div>
               </li>
             );
           })}
