@@ -374,13 +374,27 @@
     @apply flex items-center justify-center gap-2 h-[52px] px-6 bg-brand rounded-full text-white font-medium cursor-pointer shadow-drop-1 !important;
   }
   .uploader-preview-list {
-    @apply fixed bottom-10 right-10 z-50 flex size-full h-fit max-w-[480px] flex-col gap-3 rounded-[20px] bg-white p-7 shadow-drop-3 !important;
+    @apply fixed bottom-10 right-10 z-50 flex size-full h-fit max-w-[480px] max-h-[70vh] flex-col gap-3 overflow-y-auto rounded-[20px] bg-white p-7 pr-5 shadow-drop-3 !important;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
   }
   .uploader-preview-item {
     @apply flex items-center justify-between  gap-3 rounded-xl p-3 shadow-drop-3 !important;
   }
   .preview-item-name {
     @apply subtitle-2 mb-2 line-clamp-1 max-w-[300px] !important;
+  }
+
+  .uploader-preview-list::-webkit-scrollbar {
+    width: 8px;
+  }
+  .uploader-preview-list::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 9999px;
+  }
+  .uploader-preview-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
   }
 
   /* Page Dropzone */

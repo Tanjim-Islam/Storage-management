@@ -57,7 +57,46 @@ export const getFolders = async (sort: string = "$createdAt-desc", limit?: numbe
     queries
   );
 
-  return parseStringify(folders);
+  if (!folders.total) return parseStringify(folders);
+
+  const folderIds = folders.documents.map((folder) => folder.$id);
+
+  const filesInFolders = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.filesCollectionId,
+    [
+      Query.or([
+        Query.equal("owner", [currentUser.$id]),
+        Query.contains("users", [currentUser.email]),
+      ]),
+      Query.equal("folderId", folderIds),
+      Query.limit(5000),
+    ]
+  );
+
+  const folderSizes = filesInFolders.documents.reduce<Record<string, number>>(
+    (acc, file) => {
+      const folderId = file.folderId as string | undefined;
+      if (!folderId) return acc;
+
+      const fileSize =
+        typeof file.size === "number" ? (file.size as number) : 0;
+
+      acc[folderId] = (acc[folderId] || 0) + fileSize;
+      return acc;
+    },
+    {}
+  );
+
+  const foldersWithSizes = {
+    ...folders,
+    documents: folders.documents.map((folder) => ({
+      ...folder,
+      size: folderSizes[folder.$id] || 0,
+    })),
+  };
+
+  return parseStringify(foldersWithSizes);
 };
 
 export const getFolderById = async (folderId: string) => {

@@ -5,8 +5,13 @@ import Link from "next/link";
 import { Models } from "node-appwrite";
 import FolderActionDropdown from "./FolderActionDropdown";
 import { usePathname } from "next/navigation";
+import { convertFileSize } from "@/lib/utils";
 
-const FolderCard = ({ folder }: { folder: Models.Document }) => {
+const FolderCard = ({
+  folder,
+}: {
+  folder: Models.Document & { size?: number };
+}) => {
   const pathname = usePathname();
   const isOnFoldersPage = pathname === "/folders";
   
@@ -21,7 +26,12 @@ const FolderCard = ({ folder }: { folder: Models.Document }) => {
             height={24}
           />
         </span>
-        <p className="subtitle-2 line-clamp-1 flex-1">{folder.name}</p>
+        <div className="flex flex-1 flex-col">
+          <p className="subtitle-2 line-clamp-1">{folder.name}</p>
+          <p className="caption text-light-200">
+            Size: {convertFileSize(Number(folder.size) || 0)}
+          </p>
+        </div>
       </Link>
       <FolderActionDropdown folder={folder} />
     </div>

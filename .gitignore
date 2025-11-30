@@ -9,6 +9,9 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+._*
+.DS_Store
+._.env.local
 
 # testing
 /coverage
@@ -43,3 +46,4 @@ next-env.d.ts
 checklist.md
 tasks.md
 .cursorignore
+Master - test.psd

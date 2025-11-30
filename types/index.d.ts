@@ -6,6 +6,7 @@ declare interface Folder {
   name: string;
   ownerId: string;
   accountId: string;
+  size?: number;
 }
 
 declare interface ActionType {
