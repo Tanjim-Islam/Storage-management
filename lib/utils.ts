@@ -246,7 +246,8 @@ export const handleFolderUpload = async (
   files: File[],
   ownerId: string,
   accountId: string,
-  path: string
+  path: string,
+  onFileUploaded?: (file: File) => void
 ): Promise<void> => {
   // Collect all unique folder paths (including nested folders)
   const allFolderPaths = new Set<string>();
@@ -290,21 +291,29 @@ export const handleFolderUpload = async (
       const folderPath = pathParts.slice(0, -1).join("/");
       const folderId = foldersMap.get(folderPath);
 
-      return uploadFile({
+      const uploaded = await uploadFile({
         file,
         ownerId,
         accountId,
         folderId,
         path,
       });
+
+      if (uploaded) onFileUploaded?.(file);
+
+      return uploaded;
     } else {
       // Handle individual files without folder structure
-      return uploadFile({
+      const uploaded = await uploadFile({
         file,
         ownerId,
         accountId,
         path,
       });
+
+      if (uploaded) onFileUploaded?.(file);
+
+      return uploaded;
     }
   });
 

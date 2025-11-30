@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import {
@@ -26,23 +26,92 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+  const progressTimers = useRef<
+    Record<string, ReturnType<typeof setInterval>>
+  >({});
+
+  const getFileId = (file: File) =>
+    `${file.name}-${file.size}-${file.lastModified}`;
+
+  const resetProgress = () => {
+    Object.values(progressTimers.current).forEach(clearInterval);
+    progressTimers.current = {};
+    setProgressMap({});
+  };
+
+  const startProgress = (id: string) => {
+    if (progressTimers.current[id]) clearInterval(progressTimers.current[id]);
+
+    setProgressMap((prev) => ({ ...prev, [id]: 8 }));
+
+    progressTimers.current[id] = setInterval(() => {
+      setProgressMap((prev) => {
+        const current = prev[id] ?? 8;
+        const next = Math.min(current + 6, 92);
+        return { ...prev, [id]: next };
+      });
+    }, 200);
+  };
+
+  const completeProgress = (id: string) => {
+    if (progressTimers.current[id]) {
+      clearInterval(progressTimers.current[id]);
+      delete progressTimers.current[id];
+    }
+
+    setProgressMap((prev) => ({ ...prev, [id]: 100 }));
+    setTimeout(() => {
+      setProgressMap((prev) => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
+    }, 400);
+  };
+
+  const clearProgress = (id: string) => {
+    if (progressTimers.current[id]) {
+      clearInterval(progressTimers.current[id]);
+      delete progressTimers.current[id];
+    }
+    setProgressMap((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+  };
 
   const processFiles = async (filesToProcess: File[]) => {
     try {
       setFiles(filesToProcess);
+      filesToProcess.forEach((file) => startProgress(getFileId(file)));
 
       // Check if any files have folder structure
       if (hasFolderStructure(filesToProcess)) {
         // Handle as folder upload
-        await handleFolderUpload(filesToProcess, ownerId, accountId, path);
+        await handleFolderUpload(
+          filesToProcess,
+          ownerId,
+          accountId,
+          path,
+          (uploadedFile) => {
+            const id = getFileId(uploadedFile);
+            completeProgress(id);
+            setFiles((prevFiles) =>
+              prevFiles.filter((file) => getFileId(file) !== id)
+            );
+          }
+        );
         toast({ description: "Folder uploaded successfully!" });
       } else {
         // Handle as individual file uploads
         const uploadPromises = filesToProcess.map(async (file) => {
+          const id = getFileId(file);
+
           if (file.size > MAX_FILE_SIZE) {
             setFiles((prevFiles) =>
               prevFiles.filter((f) => f.name !== file.name)
             );
+            clearProgress(id);
 
             return toast({
               description: (
@@ -58,9 +127,12 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
           return uploadFile({ file, ownerId, accountId, path }).then(
             (uploadedFile) => {
               if (uploadedFile) {
+                completeProgress(id);
                 setFiles((prevFiles) =>
                   prevFiles.filter((f) => f.name !== file.name)
                 );
+              } else {
+                clearProgress(id);
               }
             }
           );
@@ -74,8 +146,10 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
         description: "Failed to upload. Please try again.",
         className: "error-toast",
       });
+      resetProgress();
     } finally {
       // Clear files after upload
+      resetProgress();
       setFiles([]);
     }
   };
@@ -132,6 +206,10 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
     fileName: string
   ) => {
     e.stopPropagation();
+    const file = files.find((f) => f.name === fileName);
+    if (file) {
+      clearProgress(getFileId(file));
+    }
     setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
   };
 
@@ -161,6 +239,7 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
 
           {files.map((file, index) => {
             const { type, extension } = getFileType(file.name);
+            const progress = progressMap[getFileId(file)] ?? 8;
 
             return (
               <li
@@ -176,12 +255,17 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
 
                   <div className="preview-item-name">
                     {file.name}
-                    <Image
-                      src="/assets/icons/file-loader.gif"
-                      width={80}
-                      height={26}
-                      alt="Loader"
-                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-2 w-40 overflow-hidden rounded-full bg-rose-100">
+                        <div
+                          className="h-full rounded-full bg-rose-300 transition-[width] duration-200"
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        />
+                      </div>
+                      <span className="caption text-light-200">
+                        {Math.min(Math.round(progress), 100)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
 
