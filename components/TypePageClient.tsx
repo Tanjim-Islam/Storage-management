@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Card from "@/components/Card";
 import Sort from "@/components/Sort";
 import { convertFileSize } from "@/lib/utils";
-import { deleteMultipleFiles } from "@/lib/actions/file.actions";
+import { deleteFile } from "@/lib/actions/file.actions";
 import { useToast } from "@/hooks/use-toast";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -19,6 +19,7 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
   const [items, setItems] = useState<FileDoc[]>(files);
   const [selected, setSelected] = useState<Record<string, { bucketField: string }>>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState(0);
 
   useEffect(() => {
     setItems(files);
@@ -54,25 +55,28 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
   const handleDeleteSelected = async () => {
     if (!Object.keys(selected).length) return;
     setIsDeleting(true);
+    setDeleteProgress(0);
     try {
-      const payload = Object.entries(selected).map(([fileId, meta]) => ({
-        fileId,
-        bucketField: meta.bucketField,
-      }));
+      const entries = Object.entries(selected);
+      const total = entries.length;
 
-      const success = await deleteMultipleFiles({ files: payload, path });
-      if (success) {
-        const selectedIds = new Set(Object.keys(selected));
-        setItems((prev) => prev.filter((file) => !selectedIds.has(file.$id)));
-        setSelected({});
-        toast({ description: "Selected files deleted." });
-        router.refresh();
-      } else {
-        toast({
-          description: "Failed to delete selected files.",
-          className: "error-toast",
+      for (let i = 0; i < total; i++) {
+        const [fileId, meta] = entries[i];
+        const isLast = i === total - 1;
+        await deleteFile({
+          fileId,
+          bucketField: meta.bucketField,
+          path,
+          skipRevalidate: !isLast,
         });
+        setDeleteProgress(Math.round(((i + 1) / total) * 100));
       }
+
+      const selectedIds = new Set(Object.keys(selected));
+      setItems((prev) => prev.filter((file) => !selectedIds.has(file.$id)));
+      setSelected({});
+      toast({ description: "Selected files deleted." });
+      router.refresh();
     } catch (error) {
       console.error(error);
       toast({
@@ -81,6 +85,7 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
       });
     } finally {
       setIsDeleting(false);
+      setDeleteProgress(0);
     }
   };
 
@@ -130,6 +135,20 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
               <Sort />
             </div>
           </div>
+
+          {isDeleting && (
+            <div className="delete-progress">
+              <div className="caption text-light-200">
+                Deleting... {deleteProgress}%
+              </div>
+              <div className="delete-progress-track">
+                <div
+                  className="delete-progress-bar"
+                  style={{ width: `${deleteProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

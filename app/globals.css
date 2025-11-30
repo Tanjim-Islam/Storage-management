@@ -334,6 +334,15 @@
   .bulk-delete-button {
     @apply h-10 rounded-full border border-light-200 bg-error/5 px-4 text-sm font-semibold text-error transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:border-light-200 disabled:bg-light-200 disabled:text-light-300;
   }
+  .delete-progress {
+    @apply mt-3 flex w-full max-w-[340px] flex-col gap-2;
+  }
+  .delete-progress-track {
+    @apply h-2 w-full overflow-hidden rounded-full bg-error/5;
+  }
+  .delete-progress-bar {
+    @apply h-full rounded-full bg-error/30 transition-[width] duration-200;
+  }
 
   /* AuthForm */
   .auth-form {

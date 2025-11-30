@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Models } from "node-appwrite";
 import FolderCard from "@/components/FolderCard";
 import Sort from "@/components/Sort";
-import { deleteMultipleFolders } from "@/lib/actions/folder.actions";
+import { deleteFolder } from "@/lib/actions/folder.actions";
 import { useToast } from "@/hooks/use-toast";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
   const [items, setItems] = useState<FolderDoc[]>(folders);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState(0);
 
   useEffect(() => {
     setItems(folders);
@@ -56,24 +57,21 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
     const selectedIds = Object.keys(selected).filter((id) => selected[id]);
     if (!selectedIds.length) return;
     setIsDeleting(true);
+    setDeleteProgress(0);
     try {
-      const success = await deleteMultipleFolders({
-        folderIds: selectedIds,
-        path,
-      });
-
-      if (success) {
-        const selectedSet = new Set(selectedIds);
-        setItems((prev) => prev.filter((folder) => !selectedSet.has(folder.$id)));
-        setSelected({});
-        toast({ description: "Selected folders deleted." });
-        router.refresh();
-      } else {
-        toast({
-          description: "Failed to delete selected folders.",
-          className: "error-toast",
-        });
+      const total = selectedIds.length;
+      for (let i = 0; i < total; i++) {
+        const id = selectedIds[i];
+        const isLast = i === total - 1;
+        await deleteFolder({ folderId: id, path, skipRevalidate: !isLast });
+        setDeleteProgress(Math.round(((i + 1) / total) * 100));
       }
+
+      const selectedSet = new Set(selectedIds);
+      setItems((prev) => prev.filter((folder) => !selectedSet.has(folder.$id)));
+      setSelected({});
+      toast({ description: "Selected folders deleted." });
+      router.refresh();
     } catch (error) {
       console.error(error);
       toast({
@@ -82,6 +80,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
       });
     } finally {
       setIsDeleting(false);
+      setDeleteProgress(0);
     }
   };
 
@@ -133,6 +132,20 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
               <Sort />
             </div>
           </div>
+
+          {isDeleting && (
+            <div className="delete-progress">
+              <div className="caption text-light-200">
+                Deleting... {deleteProgress}%
+              </div>
+              <div className="delete-progress-track">
+                <div
+                  className="delete-progress-bar"
+                  style={{ width: `${deleteProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </section>
       
