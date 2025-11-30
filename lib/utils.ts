@@ -367,6 +367,7 @@ export const getFileTypesParams = (type: string) => {
     case "images":
       return ["image"];
     case "media":
+    case "videos":
       return ["video", "audio"];
     case "others":
       return ["other"];

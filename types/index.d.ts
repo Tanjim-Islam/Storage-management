@@ -49,6 +49,7 @@ declare interface DeleteFileProps {
   fileId: string;
   bucketField: string;
   path: string;
+  skipRevalidate?: boolean;
 }
 
 declare interface FileUploaderProps {

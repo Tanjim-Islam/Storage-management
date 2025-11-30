@@ -1,10 +1,8 @@
 import React from "react";
-import Sort from "@/components/Sort";
 import { getFiles } from "@/lib/actions/file.actions";
-import { Models } from "node-appwrite";
-import Card from "@/components/Card";
 import { FileViewerProvider } from "@/components/FileViewerProvider";
 import { getFileTypesParams } from "@/lib/utils";
+import TypePageClient from "@/components/TypePageClient";
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
   const type = ((await params)?.type as string) || "";
@@ -17,34 +15,7 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
 
   return (
     <FileViewerProvider files={files.documents}>
-    <div className="page-container">
-      <section className="w-full">
-        <h1 className="h1 capitalize">{type}</h1>
-
-        <div className="total-size-section">
-          <p className="body-1">
-            Total: <span className="h5">0 MB</span>
-          </p>
-
-          <div className="sort-container">
-            <p className="body-1 hidden text-light-200 sm:block">Sort by:</p>
-
-            <Sort />
-          </div>
-        </div>
-      </section>
-
-      {/* Render the files */}
-      {files.total > 0 ? (
-        <section className="file-list">
-          {files.documents.map((file: Models.Document, i) => (
-            <Card key={file.$id} file={file} index={i} />
-          ))}
-        </section>
-      ) : (
-        <p className="empty-list">No files uploaded</p>
-      )}
-    </div>
+      <TypePageClient files={files.documents} type={type} />
     </FileViewerProvider>
   );
 };

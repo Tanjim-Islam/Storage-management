@@ -324,6 +324,17 @@
     @apply aspect-square rounded-full !important;
   }
 
+  /* Selection */
+  .selection-checkbox {
+    @apply h-4 w-4 cursor-pointer rounded border border-light-200 accent-brand;
+  }
+  .select-all-toggle {
+    @apply body-2 flex items-center gap-2 text-light-100;
+  }
+  .bulk-delete-button {
+    @apply h-10 rounded-full border border-light-200 bg-error/5 px-4 text-sm font-semibold text-error transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:border-light-200 disabled:bg-light-200 disabled:text-light-300;
+  }
+
   /* AuthForm */
   .auth-form {
     @apply flex max-h-[800px] w-full max-w-[580px] flex-col justify-center space-y-6 transition-all lg:h-full lg:space-y-8 !important;

@@ -194,6 +194,7 @@ export const deleteFile = async ({
   fileId,
   bucketField,
   path,
+  skipRevalidate = false,
 }: DeleteFileProps) => {
   const { databases, storage } = await createAdminClient();
 
@@ -208,10 +209,36 @@ export const deleteFile = async ({
       await storage.deleteFile(appwriteConfig.bucketId, bucketField);
     }
 
-    revalidatePath(path);
+    if (!skipRevalidate) revalidatePath(path);
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to rename file");
+  }
+};
+
+export const deleteMultipleFiles = async ({
+  files,
+  path,
+}: {
+  files: { fileId: string; bucketField: string }[];
+  path: string;
+}) => {
+  try {
+    await Promise.all(
+      files.map((file) =>
+        deleteFile({
+          fileId: file.fileId,
+          bucketField: file.bucketField,
+          path,
+          skipRevalidate: true,
+        }),
+      ),
+    );
+
+    revalidatePath(path);
+    return true;
+  } catch (error) {
+    handleError(error, "Failed to delete files");
   }
 };
 

@@ -178,6 +178,7 @@ export const deleteFolder = async ({
 }: {
   folderId: string;
   path: string;
+  skipRevalidate?: boolean;
 }) => {
   const { databases } = await createAdminClient();
 
@@ -203,10 +204,32 @@ export const deleteFolder = async ({
       folderId
     );
 
-    revalidatePath(path);
+    if (!skipRevalidate) revalidatePath(path);
     return true;
   } catch (error) {
     console.error("Failed to delete folder:", error);
+    return false;
+  }
+};
+
+export const deleteMultipleFolders = async ({
+  folderIds,
+  path,
+}: {
+  folderIds: string[];
+  path: string;
+}) => {
+  try {
+    await Promise.all(
+      folderIds.map((folderId) =>
+        deleteFolder({ folderId, path, skipRevalidate: true }),
+      ),
+    );
+
+    revalidatePath(path);
+    return true;
+  } catch (error) {
+    console.error("Failed to delete folders:", error);
     return false;
   }
 };

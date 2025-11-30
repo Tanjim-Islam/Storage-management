@@ -12,12 +12,25 @@ interface Props {
   index: number;
 }
 
-const Card = ({ file, index }: Props) => {
+const Card = ({
+  file,
+  index,
+  selectionEnabled = false,
+  selected = false,
+  onToggleSelect,
+}: Props & {
+  selectionEnabled?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (fileId: string) => void;
+}) => {
   const { open } = useFileViewer();
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't open file viewer if clicking on the action dropdown
     if ((e.target as HTMLElement).closest("[data-action-dropdown]")) {
+      return;
+    }
+    if ((e.target as HTMLElement).closest("[data-selection-checkbox]")) {
       return;
     }
     open(index);
@@ -26,8 +39,22 @@ const Card = ({ file, index }: Props) => {
   return (
     <div
       onClick={handleCardClick}
-      className="file-card text-left cursor-pointer"
+      className={`file-card relative cursor-pointer text-left ${selected ? "ring-2 ring-brand/50" : ""}`}
     >
+      {selectionEnabled && (
+        <label
+          data-selection-checkbox
+          className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect?.(file.$id)}
+            className="selection-checkbox"
+          />
+        </label>
+      )}
       <div className="flex justify-between">
         <Thumbnail
           type={file.type}
