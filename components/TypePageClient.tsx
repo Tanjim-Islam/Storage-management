@@ -89,27 +89,27 @@ const TypePageClient = ({
 
         const [fileId, meta] = entries[i];
         const isLast = i === total - 1 || cancelDeleteRef.current;
-        
+
         // Calculate progress range for this item
         const startProgress = Math.round((i / total) * 100);
         const endProgress = Math.round(((i + 1) / total) * 100);
-        
+
         // Start simulated progress for this item
         setDeleteProgress(startProgress + 1);
         let simulatedProgress = startProgress + 1;
-        
+
         progressIntervalRef.current = setInterval(() => {
           simulatedProgress = Math.min(simulatedProgress + 2, endProgress - 5);
           setDeleteProgress(simulatedProgress);
         }, 100);
-        
+
         await deleteFile({
           fileId,
           bucketField: meta.bucketField,
           path,
           skipRevalidate: !isLast,
         });
-        
+
         // Clear interval and set actual progress
         if (progressIntervalRef.current) {
           clearInterval(progressIntervalRef.current);
