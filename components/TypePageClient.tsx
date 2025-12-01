@@ -13,12 +13,20 @@ import Image from "next/image";
 
 type FileDoc = Models.Document & { bucketField: string; size?: number };
 
-const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => {
+const TypePageClient = ({
+  files,
+  type,
+}: {
+  files: FileDoc[];
+  type: string;
+}) => {
   const path = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const [items, setItems] = useState<FileDoc[]>(files);
-  const [selected, setSelected] = useState<Record<string, { bucketField: string }>>({});
+  const [selected, setSelected] = useState<
+    Record<string, { bucketField: string }>
+  >({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState(0);
   const [isHoveringDelete, setIsHoveringDelete] = useState(false);
@@ -60,7 +68,7 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
     setIsDeleting(true);
     setDeleteProgress(0);
     cancelDeleteRef.current = false;
-    
+
     const deletedIds: string[] = [];
     try {
       const entries = Object.entries(selected);
@@ -68,10 +76,12 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
 
       for (let i = 0; i < total; i++) {
         if (cancelDeleteRef.current) {
-          toast({ description: `Deletion cancelled. ${deletedIds.length} files deleted.` });
+          toast({
+            description: `Deletion cancelled. ${deletedIds.length} files deleted.`,
+          });
           break;
         }
-        
+
         const [fileId, meta] = entries[i];
         const isLast = i === total - 1 || cancelDeleteRef.current;
         await deleteFile({
@@ -86,14 +96,14 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
 
       const deletedSet = new Set(deletedIds);
       setItems((prev) => prev.filter((file) => !deletedSet.has(file.$id)));
-      
+
       // Remove deleted items from selection
       setSelected((prev) => {
         const next = { ...prev };
         deletedIds.forEach((id) => delete next[id]);
         return next;
       });
-      
+
       if (!cancelDeleteRef.current) {
         toast({ description: "Selected files deleted." });
       }
@@ -117,7 +127,7 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
 
   const totalSize = useMemo(
     () => items.reduce((sum, file) => sum + (file.size || 0), 0),
-    [items],
+    [items]
   );
 
   const allSelected =
@@ -148,7 +158,7 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
 
             <Button
               type="button"
-              className={`bulk-delete-button relative overflow-hidden ${isDeleting ? 'min-w-[160px]' : ''}`}
+              className={`bulk-delete-button relative overflow-hidden ${isDeleting ? "min-w-[160px]" : ""}`}
               variant="ghost"
               onClick={isDeleting ? handleCancelDelete : handleDeleteSelected}
               disabled={selectedCount === 0 && !isDeleting}
@@ -178,7 +188,9 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
                     <>Deleting... {deleteProgress}%</>
                   )
                 ) : (
-                  <>Delete selected{selectedCount ? ` (${selectedCount})` : ""}</>
+                  <>
+                    Delete selected{selectedCount ? ` (${selectedCount})` : ""}
+                  </>
                 )}
               </span>
             </Button>

@@ -62,16 +62,18 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
     setIsDeleting(true);
     setDeleteProgress(0);
     cancelDeleteRef.current = false;
-    
+
     const deletedIds: string[] = [];
     try {
       const total = selectedIds.length;
       for (let i = 0; i < total; i++) {
         if (cancelDeleteRef.current) {
-          toast({ description: `Deletion cancelled. ${deletedIds.length} folders deleted.` });
+          toast({
+            description: `Deletion cancelled. ${deletedIds.length} folders deleted.`,
+          });
           break;
         }
-        
+
         const id = selectedIds[i];
         const isLast = i === total - 1 || cancelDeleteRef.current;
         await deleteFolder({ folderId: id, path, skipRevalidate: !isLast });
@@ -81,14 +83,14 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
 
       const deletedSet = new Set(deletedIds);
       setItems((prev) => prev.filter((folder) => !deletedSet.has(folder.$id)));
-      
+
       // Remove deleted items from selection
       setSelected((prev) => {
         const next = { ...prev };
         deletedIds.forEach((id) => delete next[id]);
         return next;
       });
-      
+
       if (!cancelDeleteRef.current) {
         toast({ description: "Selected folders deleted." });
       }
@@ -112,7 +114,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
 
   const totalSize = useMemo(
     () => items.reduce((sum, folder) => sum + (folder.size || 0), 0),
-    [items],
+    [items]
   );
 
   const allSelected =
@@ -123,7 +125,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
     <div className="page-container">
       <section className="w-full">
         <h1 className="h1">Folders</h1>
-        
+
         <div className="total-size-section">
           <p className="body-1">
             Total: <span className="h5">{items.length}</span>
@@ -145,7 +147,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
 
             <Button
               type="button"
-              className={`bulk-delete-button relative overflow-hidden ${isDeleting ? 'min-w-[160px]' : ''}`}
+              className={`bulk-delete-button relative overflow-hidden ${isDeleting ? "min-w-[160px]" : ""}`}
               variant="ghost"
               onClick={isDeleting ? handleCancelDelete : handleDeleteSelected}
               disabled={selectedCount === 0 && !isDeleting}
@@ -175,7 +177,9 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
                     <>Deleting... {deleteProgress}%</>
                   )
                 ) : (
-                  <>Delete selected{selectedCount ? ` (${selectedCount})` : ""}</>
+                  <>
+                    Delete selected{selectedCount ? ` (${selectedCount})` : ""}
+                  </>
                 )}
               </span>
             </Button>
@@ -187,7 +191,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
           </div>
         </div>
       </section>
-      
+
       {items.length > 0 ? (
         <section className="file-list">
           {items.map((folder: FolderDoc) => (
