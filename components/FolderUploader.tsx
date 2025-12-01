@@ -1,13 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { createFolder } from "@/lib/actions/folder.actions";
-import { uploadFile } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
-import { ID } from "node-appwrite";
 import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { handleFolderUpload } from "@/lib/utils";
 
 interface Props {
   ownerId: string;
@@ -23,8 +29,59 @@ interface DirectoryInputProps
 const FolderUploader = ({ ownerId, accountId }: Props) => {
   const { toast } = useToast();
   const path = usePathname();
-  const [uploadingFolders, setUploadingFolders] = useState<{ name: string; id: string }[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingFolders, setUploadingFolders] = useState<
+    { name: string; id: string; progress: number }[]
+  >([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<FileList | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [folderMeta, setFolderMeta] = useState<{ name: string; total: number } | null>(null);
+
+  const resetInput = () => {
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const startUpload = async () => {
+    if (!pendingFiles || !folderMeta) return;
+
+    const files = Array.from(pendingFiles);
+    const folderId = folderMeta.name + "-progress";
+
+    setIsUploading(true);
+    setUploadingFolders([{ name: folderMeta.name, id: folderId, progress: 0 }]);
+    setConfirmOpen(false);
+
+    try {
+      await handleFolderUpload(files, ownerId, accountId, path, {
+        onProgress: (uploaded, total) => {
+          const percent = Math.round((uploaded / total) * 100);
+          setUploadingFolders((prev) =>
+            prev.map((folder) =>
+              folder.id === folderId ? { ...folder, progress: percent } : folder
+            )
+          );
+        },
+      });
+
+      setUploadingFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === folderId ? { ...folder, progress: 100 } : folder
+        )
+      );
+
+      toast({ description: "Folder uploaded successfully!" });
+    } catch (error) {
+      console.error("Error uploading folder:", error);
+      toast({ description: "Failed to upload folder. Please try again." });
+    } finally {
+      setIsUploading(false);
+      setPendingFiles(null);
+      resetInput();
+      setTimeout(() => setUploadingFolders([]), 500);
+    }
+  };
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -32,80 +89,20 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
       return;
     }
     
-    setIsUploading(true);
-
     const hasRootFiles = Array.from(files).some(
       (f) => !f.webkitRelativePath.includes("/")
     );
     if (hasRootFiles) {
       toast({ description: "Please select a folder" });
+      resetInput();
       return;
     }
 
-    // Collect all unique folder paths (including nested folders)
-    const allFolderPaths = new Set<string>();
-    const foldersMap = new Map<string, string>(); // path -> folderId
-    
     // Extract root folder name for display
-    const rootFolderName = files[0].webkitRelativePath.split('/')[0];
-    setUploadingFolders([{ name: rootFolderName, id: ID.unique() }]);
-
-    Array.from(files).forEach((file) => {
-      const pathParts = file.webkitRelativePath.split("/");
-      // Add all folder paths (excluding the file itself)
-      for (let i = 1; i < pathParts.length; i++) {
-        const folderPath = pathParts.slice(0, i).join("/");
-        allFolderPaths.add(folderPath);
-      }
-    });
-
-    // Sort folder paths to ensure parent folders are created before children
-    const sortedFolderPaths = Array.from(allFolderPaths).sort();
-
-    try {
-      // Create folders first
-      for (const folderPath of sortedFolderPaths) {
-        const pathParts = folderPath.split("/");
-        const folderName = pathParts[pathParts.length - 1];
-
-        const folderResult = await createFolder(
-          {
-            name: folderName,
-            ownerId,
-            accountId,
-          },
-          path
-        );
-
-        foldersMap.set(folderPath, folderResult);
-      }
-
-      // Upload files and associate them with their folders
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const pathParts = file.webkitRelativePath.split("/");
-        const folderPath = pathParts.slice(0, -1).join("/");
-        const folderId = foldersMap.get(folderPath);
-
-        return uploadFile({
-          file,
-          ownerId,
-          accountId,
-          folderId,
-          path,
-        });
-      });
-
-      await Promise.all(uploadPromises);
-
-      toast({ description: "Folder uploaded successfully!" });
-      setIsUploading(false);
-      setUploadingFolders([]);
-    } catch (error) {
-      console.error("Error uploading folder:", error);
-      toast({ description: "Failed to upload folder. Please try again." });
-      setIsUploading(false);
-      setUploadingFolders([]);
-    }
+    const rootFolderName = files[0].webkitRelativePath.split("/")[0];
+    setFolderMeta({ name: rootFolderName, total: files.length });
+    setPendingFiles(files);
+    setConfirmOpen(true);
   };
 
   return (
@@ -113,6 +110,7 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
       <input
         id="folder-upload"
         type="file"
+        ref={inputRef}
         className="hidden"
         {...({ webkitdirectory: "" } as any)}
         multiple
@@ -139,8 +137,11 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
                   </figure>
                   <div className="preview-item-name">
                     {folder.name}
-                    <div className="w-full h-1.5 bg-gray-200 rounded-2xl overflow-hidden mt-1">
-                      <div className="h-full bg-blue-400 rounded-2xl animate-pulse w-full"></div>
+                    <div className="w-full h-2 bg-light-300 rounded-2xl overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-brand rounded-2xl transition-[width] duration-200"
+                        style={{ width: `${Math.max(folder.progress, 5)}%` }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -148,9 +149,12 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
                   variant="ghost"
                   size="icon"
                   className="shad-button-ghost"
+                  disabled={isUploading}
                   onClick={() => {
                     setUploadingFolders([]);
                     setIsUploading(false);
+                    setPendingFiles(null);
+                    resetInput();
                   }}
                 >
                   <Image
@@ -166,6 +170,38 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
           </div>
         </div>
       )}
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Upload {folderMeta?.total ?? 0} files?</DialogTitle>
+            <DialogDescription>
+              This will upload all files from “{folderMeta?.name}”. Only proceed if you trust this
+              site.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex w-full flex-row justify-center gap-4">
+            <Button
+              variant="ghost"
+              className="h-10 w-28 rounded-full border border-light-200 text-light-100 hover:bg-light-300"
+              onClick={() => {
+                setConfirmOpen(false);
+                setPendingFiles(null);
+                resetInput();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="primary-btn h-10 w-28 rounded-full"
+              onClick={startUpload}
+              disabled={isUploading}
+            >
+              Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

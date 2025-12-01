@@ -247,7 +247,10 @@ export const handleFolderUpload = async (
   ownerId: string,
   accountId: string,
   path: string,
-  onFileUploaded?: (file: File) => void
+  options?: {
+    onFileUploaded?: (file: File) => void;
+    onProgress?: (uploaded: number, total: number) => void;
+  }
 ): Promise<void> => {
   // Collect all unique folder paths (including nested folders)
   const allFolderPaths = new Set<string>();
@@ -285,6 +288,9 @@ export const handleFolderUpload = async (
   }
 
   // Upload files and associate them with their folders
+  const totalFiles = files.length;
+  let uploadedCount = 0;
+
   const uploadPromises = files.map(async (file) => {
     if (file.webkitRelativePath) {
       const pathParts = file.webkitRelativePath.split("/");
@@ -299,7 +305,11 @@ export const handleFolderUpload = async (
         path,
       });
 
-      if (uploaded) onFileUploaded?.(file);
+      if (uploaded) {
+        uploadedCount += 1;
+        options?.onFileUploaded?.(file);
+        options?.onProgress?.(uploadedCount, totalFiles);
+      }
 
       return uploaded;
     } else {
@@ -311,13 +321,18 @@ export const handleFolderUpload = async (
         path,
       });
 
-      if (uploaded) onFileUploaded?.(file);
+      if (uploaded) {
+        uploadedCount += 1;
+        options?.onFileUploaded?.(file);
+        options?.onProgress?.(uploadedCount, totalFiles);
+      }
 
       return uploaded;
     }
   });
 
   await Promise.all(uploadPromises);
+  options?.onProgress?.(totalFiles, totalFiles);
 };
 
 // DASHBOARD UTILS
