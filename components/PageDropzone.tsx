@@ -8,7 +8,6 @@ import {
   getFileType,
   hasFolderStructure,
   handleFolderUpload,
-  processDataTransferItems,
 } from "@/lib/utils";
 import { uploadFile } from "@/lib/actions/file.actions";
 import { useToast } from "@/hooks/use-toast";
@@ -88,19 +87,15 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
       // Check if any files have folder structure
       if (hasFolderStructure(filesToProcess)) {
         // Handle as folder upload
-        await handleFolderUpload(
-          filesToProcess,
-          ownerId,
-          accountId,
-          path,
-          (uploadedFile) => {
+        await handleFolderUpload(filesToProcess, ownerId, accountId, path, {
+          onFileUploaded: (uploadedFile) => {
             const id = getFileId(uploadedFile);
             completeProgress(id);
             setFiles((prevFiles) =>
               prevFiles.filter((file) => getFileId(file) !== id)
             );
-          }
-        );
+          },
+        });
         toast({ description: "Folder uploaded successfully!" });
       } else {
         // Handle as individual file uploads
@@ -180,24 +175,9 @@ const PageDropzone = ({ ownerId, accountId, children }: PageDropzoneProps) => {
     setIsDragActive(false);
 
     console.log("PageDropzone: Drop event triggered");
-    console.log("PageDropzone: DataTransfer items:", e.dataTransfer.items);
-
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      try {
-        const filesToProcess = await processDataTransferItems(
-          e.dataTransfer.items
-        );
-        console.log("PageDropzone: Processed files:", filesToProcess);
-        if (filesToProcess.length > 0) {
-          await processFiles(filesToProcess);
-        }
-      } catch (error) {
-        console.error("Error processing dropped items:", error);
-        toast({
-          description: "Failed to process dropped items. Please try again.",
-          className: "error-toast",
-        });
-      }
+    const droppedFiles = Array.from(e.dataTransfer.files || []);
+    if (droppedFiles.length > 0) {
+      await processFiles(droppedFiles);
     }
   };
 

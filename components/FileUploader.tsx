@@ -91,19 +91,15 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
       // Check if any files have folder structure
       if (hasFolderStructure(filesToProcess)) {
         // Handle as folder upload
-        await handleFolderUpload(
-          filesToProcess,
-          ownerId,
-          accountId,
-          path,
-          (uploadedFile) => {
+        await handleFolderUpload(filesToProcess, ownerId, accountId, path, {
+          onFileUploaded: (uploadedFile) => {
             const id = getFileId(uploadedFile);
             completeProgress(id);
             setFiles((prevFiles) =>
               prevFiles.filter((file) => getFileId(file) !== id)
             );
-          }
-        );
+          },
+        });
         toast({ description: "Folder uploaded successfully!" });
       } else {
         // Handle as individual file uploads
