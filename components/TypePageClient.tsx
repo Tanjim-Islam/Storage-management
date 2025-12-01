@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Models } from "node-appwrite";
 import { Button } from "@/components/ui/button";
 import Card from "@/components/Card";
@@ -9,6 +9,7 @@ import { convertFileSize } from "@/lib/utils";
 import { deleteFile } from "@/lib/actions/file.actions";
 import { useToast } from "@/hooks/use-toast";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 
 type FileDoc = Models.Document & { bucketField: string; size?: number };
 
@@ -20,6 +21,8 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
   const [selected, setSelected] = useState<Record<string, { bucketField: string }>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState(0);
+  const [isHoveringDelete, setIsHoveringDelete] = useState(false);
+  const cancelDeleteRef = useRef(false);
 
   useEffect(() => {
     setItems(files);
@@ -56,26 +59,44 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
     if (!Object.keys(selected).length) return;
     setIsDeleting(true);
     setDeleteProgress(0);
+    cancelDeleteRef.current = false;
+    
+    const deletedIds: string[] = [];
     try {
       const entries = Object.entries(selected);
       const total = entries.length;
 
       for (let i = 0; i < total; i++) {
+        if (cancelDeleteRef.current) {
+          toast({ description: `Deletion cancelled. ${deletedIds.length} files deleted.` });
+          break;
+        }
+        
         const [fileId, meta] = entries[i];
-        const isLast = i === total - 1;
+        const isLast = i === total - 1 || cancelDeleteRef.current;
         await deleteFile({
           fileId,
           bucketField: meta.bucketField,
           path,
           skipRevalidate: !isLast,
         });
+        deletedIds.push(fileId);
         setDeleteProgress(Math.round(((i + 1) / total) * 100));
       }
 
-      const selectedIds = new Set(Object.keys(selected));
-      setItems((prev) => prev.filter((file) => !selectedIds.has(file.$id)));
-      setSelected({});
-      toast({ description: "Selected files deleted." });
+      const deletedSet = new Set(deletedIds);
+      setItems((prev) => prev.filter((file) => !deletedSet.has(file.$id)));
+      
+      // Remove deleted items from selection
+      setSelected((prev) => {
+        const next = { ...prev };
+        deletedIds.forEach((id) => delete next[id]);
+        return next;
+      });
+      
+      if (!cancelDeleteRef.current) {
+        toast({ description: "Selected files deleted." });
+      }
       router.refresh();
     } catch (error) {
       console.error(error);
@@ -86,7 +107,12 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
     } finally {
       setIsDeleting(false);
       setDeleteProgress(0);
+      cancelDeleteRef.current = false;
     }
+  };
+
+  const handleCancelDelete = () => {
+    cancelDeleteRef.current = true;
   };
 
   const totalSize = useMemo(
@@ -122,12 +148,39 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
 
             <Button
               type="button"
-              className="bulk-delete-button"
+              className={`bulk-delete-button relative overflow-hidden ${isDeleting ? 'min-w-[160px]' : ''}`}
               variant="ghost"
-              onClick={handleDeleteSelected}
-              disabled={selectedCount === 0 || isDeleting}
+              onClick={isDeleting ? handleCancelDelete : handleDeleteSelected}
+              disabled={selectedCount === 0 && !isDeleting}
+              onMouseEnter={() => setIsHoveringDelete(true)}
+              onMouseLeave={() => setIsHoveringDelete(false)}
             >
-              Delete selected{selectedCount ? ` (${selectedCount})` : ""}
+              {isDeleting && (
+                <div
+                  className="absolute inset-0 bg-error/20 transition-[width] duration-200"
+                  style={{ width: `${deleteProgress}%` }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                {isDeleting ? (
+                  isHoveringDelete ? (
+                    <>
+                      <Image
+                        src="/assets/icons/close.svg"
+                        alt="cancel"
+                        width={16}
+                        height={16}
+                        className="brightness-0 invert-[0.4] sepia-[1] saturate-[50] hue-rotate-[-50deg]"
+                      />
+                      Cancel
+                    </>
+                  ) : (
+                    <>Deleting... {deleteProgress}%</>
+                  )
+                ) : (
+                  <>Delete selected{selectedCount ? ` (${selectedCount})` : ""}</>
+                )}
+              </span>
             </Button>
 
             <div className="sort-container">
@@ -135,20 +188,6 @@ const TypePageClient = ({ files, type }: { files: FileDoc[]; type: string }) => 
               <Sort />
             </div>
           </div>
-
-          {isDeleting && (
-            <div className="delete-progress">
-              <div className="caption text-light-200">
-                Deleting... {deleteProgress}%
-              </div>
-              <div className="delete-progress-track">
-                <div
-                  className="delete-progress-bar"
-                  style={{ width: `${deleteProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </section>
 

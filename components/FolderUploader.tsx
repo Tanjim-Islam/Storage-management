@@ -5,25 +5,11 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { handleFolderUpload } from "@/lib/utils";
 
 interface Props {
   ownerId: string;
   accountId: string;
-}
-
-interface DirectoryInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
-  webkitdirectory?: string;
-  directory?: string;
 }
 
 const FolderUploader = ({ ownerId, accountId }: Props) => {
@@ -35,26 +21,35 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
     { name: string; id: string; progress: number }[]
   >([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<FileList | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [folderMeta, setFolderMeta] = useState<{ name: string; total: number } | null>(null);
 
   const resetInput = () => {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const startUpload = async () => {
-    if (!pendingFiles || !folderMeta) return;
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      return;
+    }
+    
+    const hasRootFiles = Array.from(files).some(
+      (f) => !f.webkitRelativePath.includes("/")
+    );
+    if (hasRootFiles) {
+      toast({ description: "Please select a folder" });
+      resetInput();
+      return;
+    }
 
-    const files = Array.from(pendingFiles);
-    const folderId = folderMeta.name + "-progress";
+    // Extract root folder name for display
+    const rootFolderName = files[0].webkitRelativePath.split("/")[0];
+    const folderId = rootFolderName + "-progress";
 
     setIsUploading(true);
-    setUploadingFolders([{ name: folderMeta.name, id: folderId, progress: 0 }]);
-    setConfirmOpen(false);
+    setUploadingFolders([{ name: rootFolderName, id: folderId, progress: 0 }]);
 
     try {
-      await handleFolderUpload(files, ownerId, accountId, path, {
+      await handleFolderUpload(Array.from(files), ownerId, accountId, path, {
         onProgress: (uploaded, total) => {
           const percent = Math.round((uploaded / total) * 100);
           setUploadingFolders((prev) =>
@@ -77,32 +72,9 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
       toast({ description: "Failed to upload folder. Please try again." });
     } finally {
       setIsUploading(false);
-      setPendingFiles(null);
       resetInput();
       setTimeout(() => setUploadingFolders([]), 500);
     }
-  };
-
-  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) {
-      return;
-    }
-    
-    const hasRootFiles = Array.from(files).some(
-      (f) => !f.webkitRelativePath.includes("/")
-    );
-    if (hasRootFiles) {
-      toast({ description: "Please select a folder" });
-      resetInput();
-      return;
-    }
-
-    // Extract root folder name for display
-    const rootFolderName = files[0].webkitRelativePath.split("/")[0];
-    setFolderMeta({ name: rootFolderName, total: files.length });
-    setPendingFiles(files);
-    setConfirmOpen(true);
   };
 
   return (
@@ -153,7 +125,6 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
                   onClick={() => {
                     setUploadingFolders([]);
                     setIsUploading(false);
-                    setPendingFiles(null);
                     resetInput();
                   }}
                 >
@@ -170,38 +141,6 @@ const FolderUploader = ({ ownerId, accountId }: Props) => {
           </div>
         </div>
       )}
-
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Upload {folderMeta?.total ?? 0} files?</DialogTitle>
-            <DialogDescription>
-              This will upload all files from “{folderMeta?.name}”. Only proceed if you trust this
-              site.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex w-full flex-row justify-center gap-4">
-            <Button
-              variant="ghost"
-              className="h-10 w-28 rounded-full border border-light-200 text-light-100 hover:bg-light-300"
-              onClick={() => {
-                setConfirmOpen(false);
-                setPendingFiles(null);
-                resetInput();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="primary-btn h-10 w-28 rounded-full"
-              onClick={startUpload}
-              disabled={isUploading}
-            >
-              Upload
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
