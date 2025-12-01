@@ -31,6 +31,7 @@ const TypePageClient = ({
   const [deleteProgress, setDeleteProgress] = useState(0);
   const [isHoveringDelete, setIsHoveringDelete] = useState(false);
   const cancelDeleteRef = useRef(false);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setItems(files);
@@ -76,6 +77,10 @@ const TypePageClient = ({
 
       for (let i = 0; i < total; i++) {
         if (cancelDeleteRef.current) {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
           toast({
             description: `Deletion cancelled. ${deletedIds.length} files deleted.`,
           });
@@ -84,14 +89,34 @@ const TypePageClient = ({
 
         const [fileId, meta] = entries[i];
         const isLast = i === total - 1 || cancelDeleteRef.current;
+        
+        // Calculate progress range for this item
+        const startProgress = Math.round((i / total) * 100);
+        const endProgress = Math.round(((i + 1) / total) * 100);
+        
+        // Start simulated progress for this item
+        setDeleteProgress(startProgress + 1);
+        let simulatedProgress = startProgress + 1;
+        
+        progressIntervalRef.current = setInterval(() => {
+          simulatedProgress = Math.min(simulatedProgress + 2, endProgress - 5);
+          setDeleteProgress(simulatedProgress);
+        }, 100);
+        
         await deleteFile({
           fileId,
           bucketField: meta.bucketField,
           path,
           skipRevalidate: !isLast,
         });
+        
+        // Clear interval and set actual progress
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
         deletedIds.push(fileId);
-        setDeleteProgress(Math.round(((i + 1) / total) * 100));
+        setDeleteProgress(endProgress);
       }
 
       const deletedSet = new Set(deletedIds);
@@ -115,6 +140,10 @@ const TypePageClient = ({
         className: "error-toast",
       });
     } finally {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setIsDeleting(false);
       setDeleteProgress(0);
       cancelDeleteRef.current = false;
@@ -123,6 +152,10 @@ const TypePageClient = ({
 
   const handleCancelDelete = () => {
     cancelDeleteRef.current = true;
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
   };
 
   const totalSize = useMemo(

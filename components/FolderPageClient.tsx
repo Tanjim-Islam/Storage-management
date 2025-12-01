@@ -23,6 +23,7 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
   const [deleteProgress, setDeleteProgress] = useState(0);
   const [isHoveringDelete, setIsHoveringDelete] = useState(false);
   const cancelDeleteRef = useRef(false);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setItems(folders);
@@ -68,6 +69,10 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
       const total = selectedIds.length;
       for (let i = 0; i < total; i++) {
         if (cancelDeleteRef.current) {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
           toast({
             description: `Deletion cancelled. ${deletedIds.length} folders deleted.`,
           });
@@ -76,9 +81,29 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
 
         const id = selectedIds[i];
         const isLast = i === total - 1 || cancelDeleteRef.current;
+        
+        // Calculate progress range for this item
+        const startProgress = Math.round((i / total) * 100);
+        const endProgress = Math.round(((i + 1) / total) * 100);
+        
+        // Start simulated progress for this item
+        setDeleteProgress(startProgress + 1);
+        let simulatedProgress = startProgress + 1;
+        
+        progressIntervalRef.current = setInterval(() => {
+          simulatedProgress = Math.min(simulatedProgress + 2, endProgress - 5);
+          setDeleteProgress(simulatedProgress);
+        }, 100);
+        
         await deleteFolder({ folderId: id, path, skipRevalidate: !isLast });
+        
+        // Clear interval and set actual progress
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
         deletedIds.push(id);
-        setDeleteProgress(Math.round(((i + 1) / total) * 100));
+        setDeleteProgress(endProgress);
       }
 
       const deletedSet = new Set(deletedIds);
@@ -102,6 +127,10 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
         className: "error-toast",
       });
     } finally {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setIsDeleting(false);
       setDeleteProgress(0);
       cancelDeleteRef.current = false;
@@ -110,6 +139,10 @@ const FolderPageClient = ({ folders }: { folders: FolderDoc[] }) => {
 
   const handleCancelDelete = () => {
     cancelDeleteRef.current = true;
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
   };
 
   const totalSize = useMemo(
