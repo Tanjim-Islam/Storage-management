@@ -21,6 +21,7 @@
     "@radix-ui/react-toast": "^1.2.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "fuse.js": "^6.6.2",
     "input-otp": "^1.2.5",
     "lru-cache": "^10.2.0",
     "lucide-react": "^0.454.0",

@@ -40,12 +40,6 @@ const FolderCard = ({
       <Link
         href={`/folders/${folder.$id}`}
         className="flex flex-1 items-center gap-3 text-left"
-        onClick={(e) => {
-          if (selectionEnabled) {
-            e.preventDefault();
-            onToggleSelect?.(folder.$id);
-          }
-        }}
       >
         <span className="folder-thumb">
           <Image
