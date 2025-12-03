@@ -10,6 +10,7 @@ import { Models } from "node-appwrite";
 import Thumbnail from "@/components/Thumbnail";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { useDebounce } from "use-debounce";
+import { X } from "lucide-react";
 
 type SearchResult = {
   kind: "file" | "folder";
@@ -86,6 +87,14 @@ const Search = () => {
     setOpen(true);
   };
 
+  const handleClear = () => {
+    setQuery("");
+    setResults([]);
+    setSuggestions([]);
+    setOpen(false);
+    router.replace(path);
+  };
+
   return (
     <div className="search">
       <div className="search-input-wrapper">
@@ -101,6 +110,16 @@ const Search = () => {
           className="search-input"
           onChange={(e) => setQuery(e.target.value)}
         />
+        {query && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-light-200 transition hover:text-light-100 focus:outline-none"
+            onClick={handleClear}
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        )}
 
         {open && (
           <ul className="search-result">
@@ -133,7 +152,7 @@ const Search = () => {
                         />
                       )}
                       <div className="flex flex-col gap-1">
-                        <p className="subtitle-2 line-clamp-1 text-light-100">
+                        <p className="search-result-name subtitle-2 line-clamp-1 text-light-100">
                           {doc.name}
                         </p>
                         <div className="flex flex-wrap items-center gap-2 text-light-200 caption">
